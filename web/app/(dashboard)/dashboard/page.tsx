@@ -1,3 +1,6 @@
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardPage() {
   return (
     <div className="p-8">

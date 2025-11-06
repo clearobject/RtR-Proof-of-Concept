@@ -9,6 +9,9 @@ import {
 } from 'lucide-react'
 import { SignOutButton } from '@/components/auth/sign-out-button'
 
+// Force dynamic rendering to avoid build-time errors
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -24,7 +27,8 @@ export default async function DashboardLayout({
   } catch (error) {
     // If Supabase is not configured, user will be null
     // Middleware will handle redirect
-    console.error('Error getting user:', error)
+    // Silently handle errors - middleware will redirect if needed
+    // Don't log during build to avoid build failures
   }
 
 
