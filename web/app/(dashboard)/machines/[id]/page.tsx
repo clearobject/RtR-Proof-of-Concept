@@ -224,38 +224,42 @@ export default function MachineDetailPage() {
 
           {latestSensorData && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              {latestSensorData.temperature !== null && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="text-sm text-gray-500 mb-1">Temperature</div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {latestSensorData.temperature.toFixed(1)}°C
+              {latestSensorData.temperature !== null &&
+                latestSensorData.temperature !== undefined && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-500 mb-1">Temperature</div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      {latestSensorData.temperature.toFixed(1)}°C
+                    </div>
                   </div>
-                </div>
-              )}
-              {latestSensorData.vibration !== null && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="text-sm text-gray-500 mb-1">Vibration</div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {latestSensorData.vibration.toFixed(2)}
+                )}
+              {latestSensorData.vibration !== null &&
+                latestSensorData.vibration !== undefined && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-500 mb-1">Vibration</div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      {latestSensorData.vibration.toFixed(2)}
+                    </div>
                   </div>
-                </div>
-              )}
-              {latestSensorData.power !== null && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="text-sm text-gray-500 mb-1">Power</div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {latestSensorData.power.toFixed(1)} kW
+                )}
+              {latestSensorData.power !== null &&
+                latestSensorData.power !== undefined && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-500 mb-1">Power</div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      {latestSensorData.power.toFixed(1)} kW
+                    </div>
                   </div>
-                </div>
-              )}
-              {latestSensorData.humidity !== null && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="text-sm text-gray-500 mb-1">Humidity</div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {latestSensorData.humidity.toFixed(1)}%
+                )}
+              {latestSensorData.humidity !== null &&
+                latestSensorData.humidity !== undefined && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-500 mb-1">Humidity</div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      {latestSensorData.humidity.toFixed(1)}%
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           )}
 
@@ -268,38 +272,42 @@ export default function MachineDetailPage() {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  {latestSensorData?.temperature !== null && (
-                    <Line
-                      type="monotone"
-                      dataKey="temperature"
-                      stroke="#ef4444"
-                      name="Temperature (°C)"
-                    />
-                  )}
-                  {latestSensorData?.vibration !== null && (
-                    <Line
-                      type="monotone"
-                      dataKey="vibration"
-                      stroke="#3b82f6"
-                      name="Vibration"
-                    />
-                  )}
-                  {latestSensorData?.power !== null && (
-                    <Line
-                      type="monotone"
-                      dataKey="power"
-                      stroke="#10b981"
-                      name="Power (kW)"
-                    />
-                  )}
-                  {latestSensorData?.humidity !== null && (
-                    <Line
-                      type="monotone"
-                      dataKey="humidity"
-                      stroke="#f59e0b"
-                      name="Humidity (%)"
-                    />
-                  )}
+                  {latestSensorData?.temperature !== null &&
+                    latestSensorData?.temperature !== undefined && (
+                      <Line
+                        type="monotone"
+                        dataKey="temperature"
+                        stroke="#ef4444"
+                        name="Temperature (°C)"
+                      />
+                    )}
+                  {latestSensorData?.vibration !== null &&
+                    latestSensorData?.vibration !== undefined && (
+                      <Line
+                        type="monotone"
+                        dataKey="vibration"
+                        stroke="#3b82f6"
+                        name="Vibration"
+                      />
+                    )}
+                  {latestSensorData?.power !== null &&
+                    latestSensorData?.power !== undefined && (
+                      <Line
+                        type="monotone"
+                        dataKey="power"
+                        stroke="#10b981"
+                        name="Power (kW)"
+                      />
+                    )}
+                  {latestSensorData?.humidity !== null &&
+                    latestSensorData?.humidity !== undefined && (
+                      <Line
+                        type="monotone"
+                        dataKey="humidity"
+                        stroke="#f59e0b"
+                        name="Humidity (%)"
+                      />
+                    )}
                 </LineChart>
               </ResponsiveContainer>
             </div>
