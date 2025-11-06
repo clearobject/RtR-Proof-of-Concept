@@ -6,6 +6,7 @@ import {
   Building2,
   TrendingUp,
   MessageSquare,
+  AlertTriangle,
 } from 'lucide-react'
 import { SignOutButton } from '@/components/auth/sign-out-button'
 
@@ -34,6 +35,7 @@ export default async function DashboardLayout({
 
   const navItems = [
     { href: '/dashboard', label: 'Digital Twin', icon: LayoutDashboard },
+    { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
     { href: '/maintenance', label: 'Maintenance', icon: Wrench },
     { href: '/assets', label: 'Assets', icon: Building2 },
     { href: '/capex', label: 'Capex Planning', icon: TrendingUp },
