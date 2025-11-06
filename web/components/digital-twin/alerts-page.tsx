@@ -88,7 +88,7 @@ export function AlertsPage() {
     }
   }
 
-  const handleCreateTicket = async (alert: Alert) => {
+  const handleCreateTicket = async (alert: Alert & { machine: Machine | null }) => {
     if (!alert.machine) return
 
     try {
