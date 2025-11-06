@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 // PATCH /api/users/[id] - Update user (admin/manager only)
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -28,7 +28,7 @@ export async function PATCH(
 
     const body = await request.json()
     const { role, facility_id } = body
-    const userId = params.id
+    const { id: userId } = await params
 
     // Prevent users from modifying themselves (optional - remove if you want to allow)
     // if (userId === user.id && profile.role !== 'admin') {
@@ -63,8 +63,8 @@ export async function PATCH(
 
 // DELETE /api/users/[id] - Delete user (admin only)
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -86,7 +86,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden - Admin only' }, { status: 403 })
     }
 
-    const userId = params.id
+    const { id: userId } = await params
 
     // Prevent self-deletion
     if (userId === user.id) {

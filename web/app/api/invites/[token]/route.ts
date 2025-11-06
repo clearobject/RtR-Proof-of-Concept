@@ -1,11 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 // GET /api/invites/[token] - Get invite details (for validation)
 // This endpoint allows unauthenticated access for invite validation
 export async function GET(
-  request: Request,
-  { params }: { params: { token: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     // Use anon client for unauthenticated access
@@ -19,7 +19,7 @@ export async function GET(
     const { createClient: createAnonClient } = await import('@supabase/supabase-js')
     const supabase = createAnonClient(supabaseUrl, supabaseAnonKey)
     
-    const token = params.token
+    const { token } = await params
 
     const { data: invite, error } = await supabase
       .from('invite_tokens')
@@ -50,8 +50,8 @@ export async function GET(
 // POST /api/invites/[token]/accept - Accept an invite and create user
 // This endpoint allows unauthenticated access for invite acceptance
 export async function POST(
-  request: Request,
-  { params }: { params: { token: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -64,7 +64,7 @@ export async function POST(
     const { createClient: createAnonClient } = await import('@supabase/supabase-js')
     const supabase = createAnonClient(supabaseUrl, supabaseAnonKey)
     
-    const token = params.token
+    const { token } = await params
 
     // Get invite details
     const { data: invite, error: inviteError } = await supabase
