@@ -14,10 +14,18 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser()
+    user = authUser
+  } catch (error) {
+    // If Supabase is not configured, user will be null
+    // Middleware will handle redirect
+    console.error('Error getting user:', error)
+  }
 
 
   const navItems = [

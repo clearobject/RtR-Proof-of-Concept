@@ -19,19 +19,27 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
+    try {
+      const supabase = createClient()
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (error) {
-      setError(error.message)
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+      } else {
+        router.push('/dashboard')
+        router.refresh()
+      }
+    } catch (err: any) {
+      setError(
+        err.message ||
+          'Configuration error: Please check Supabase environment variables'
+      )
       setLoading(false)
-    } else {
-      router.push('/dashboard')
-      router.refresh()
     }
   }
 
