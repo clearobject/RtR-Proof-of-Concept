@@ -7,7 +7,7 @@ import { formatDateTime, getStatusColor } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Search, Filter } from 'lucide-react'
+import { Plus, Search, Filter, Calendar, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 
 export default function MaintenancePage() {
@@ -191,7 +191,7 @@ export default function MaintenancePage() {
                   onChange={(e) =>
                     setNewTicket({ ...newTicket, machine_id: e.target.value })
                   }
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white"
                   required
                 >
                   <option value="">Select a machine</option>

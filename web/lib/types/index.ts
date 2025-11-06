@@ -124,4 +124,25 @@ export interface AssetCost {
   created_at: string
 }
 
+export interface InviteToken {
+  id: string
+  token: string
+  created_by: string
+  email?: string
+  role: UserRole
+  facility_id?: string
+  expires_at: string
+  used_at?: string
+  used_by?: string
+  max_uses: number
+  current_uses: number
+  created_at: string
+  updated_at: string
+}
+
+export interface UserProfile extends User {
+  facility_id?: string
+  updated_at: string
+}
+
 

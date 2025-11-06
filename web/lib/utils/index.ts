@@ -68,4 +68,6 @@ export function calculateAge(inServiceDate: string, expectedLifeYears?: number):
   return { years: Math.round(years * 10) / 10, percentage }
 }
 
+// Re-export CAM utilities
+export * from './cam'
 

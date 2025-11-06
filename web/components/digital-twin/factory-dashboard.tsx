@@ -109,23 +109,23 @@ export function FactoryDashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Total</h3>
+          <h3 className="text-sm font-medium text-gray-700 mb-1">Total</h3>
           <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Operational</h3>
+          <h3 className="text-sm font-medium text-gray-700 mb-1">Operational</h3>
           <p className="text-2xl font-bold text-green-600">{stats.operational}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Warning</h3>
+          <h3 className="text-sm font-medium text-gray-700 mb-1">Warning</h3>
           <p className="text-2xl font-bold text-yellow-600">{stats.warning}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Critical</h3>
+          <h3 className="text-sm font-medium text-gray-700 mb-1">Critical</h3>
           <p className="text-2xl font-bold text-red-600">{stats.critical}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Active Alerts</h3>
+          <h3 className="text-sm font-medium text-gray-700 mb-1">Active Alerts</h3>
           <p className="text-2xl font-bold text-red-600">{stats.alerts}</p>
         </div>
       </div>
@@ -158,11 +158,11 @@ export function FactoryDashboard() {
               onChange={(e) =>
                 setFilter({ ...filter, type: e.target.value || undefined })
               }
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white"
             >
-              <option value="">All Types</option>
+              <option value="" className="text-gray-600">All Types</option>
               {machineTypes.map((type) => (
-                <option key={type} value={type}>
+                <option key={type} value={type} className="text-gray-900">
                   {type.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                 </option>
               ))}
@@ -177,11 +177,11 @@ export function FactoryDashboard() {
               onChange={(e) =>
                 setFilter({ ...filter, status: e.target.value || undefined })
               }
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white"
             >
-              <option value="">All Statuses</option>
+              <option value="" className="text-gray-600">All Statuses</option>
               {statuses.map((status) => (
-                <option key={status} value={status}>
+                <option key={status} value={status} className="text-gray-900">
                   {status.charAt(0).toUpperCase() + status.slice(1)}
                 </option>
               ))}
@@ -196,11 +196,11 @@ export function FactoryDashboard() {
               onChange={(e) =>
                 setFilter({ ...filter, zone: e.target.value || undefined })
               }
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white"
             >
-              <option value="">All Zones</option>
+              <option value="" className="text-gray-600">All Zones</option>
               {zones.map((zone) => (
-                <option key={zone} value={zone}>
+                <option key={zone} value={zone} className="text-gray-900">
                   {zone}
                 </option>
               ))}
@@ -223,35 +223,13 @@ export function FactoryDashboard() {
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
           Factory Layout - New Jersey Facility
         </h2>
-        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+        <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
           <FactoryLayout
             machines={machines}
             onMachineClick={(machine) => {
               setSelectedMachine(machine)
             }}
           />
-        </div>
-        <div className="mt-4 flex gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-green-500 rounded"></div>
-            <span>Operational</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-            <span>Warning</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-red-500 rounded"></div>
-            <span>Critical</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-blue-500 rounded"></div>
-            <span>Maintenance</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-gray-500 rounded"></div>
-            <span>Offline</span>
-          </div>
         </div>
       </div>
     </div>

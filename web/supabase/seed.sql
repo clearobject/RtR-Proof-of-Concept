@@ -75,7 +75,7 @@ BEGIN
     INSERT INTO maintenance_tickets (id, machine_id, asset_id, title, description, status, priority, created_by, created_at) VALUES
       ('990e8400-e29b-41d4-a716-446655440000', '880e8400-e29b-41d4-a716-446655440001', '770e8400-e29b-41d4-a716-446655440001', 'High Vibration on Washer-02', 'Vibration readings consistently above normal threshold. Requires inspection.', 'open', 'high', first_user_id, NOW() - INTERVAL '2 hours'),
       ('990e8400-e29b-41d4-a716-446655440001', '880e8400-e29b-41d4-a716-446655440004', '770e8400-e29b-41d4-a716-446655440004', 'Critical Temperature Alert - Dry Cleaner-01', 'Temperature exceeded safety threshold. Immediate attention required.', 'open', 'urgent', first_user_id, NOW() - INTERVAL '30 minutes'),
-      ('990e8400-e29b-41d4-a716-446655440002', NULL, '770e8400-e29b-41d4-a716-446655440002', 'Scheduled PM - Dryer-01', 'Quarterly preventive maintenance due.', 'scheduled', 'medium', first_user_id, NOW() - INTERVAL '1 day')
+      ('990e8400-e29b-41d4-a716-446655440002', NULL, '770e8400-e29b-41d4-a716-446655440002', 'Scheduled PM - Dryer-01', 'Quarterly preventive maintenance due.', 'open', 'medium', first_user_id, NOW() - INTERVAL '1 day')
     ON CONFLICT (id) DO NOTHING;
   END IF;
 END $$;

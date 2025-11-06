@@ -7,6 +7,7 @@ import {
   TrendingUp,
   MessageSquare,
   AlertTriangle,
+  Users,
 } from 'lucide-react'
 import { SignOutButton } from '@/components/auth/sign-out-button'
 
@@ -19,12 +20,22 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   let user = null
+  let userRole: string | null = null
   try {
     const supabase = await createClient()
     const {
       data: { user: authUser },
     } = await supabase.auth.getUser()
     user = authUser
+    
+    if (authUser) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('id', authUser.id)
+        .single()
+      userRole = profile?.role || null
+    }
   } catch (error) {
     // If Supabase is not configured, user will be null
     // Middleware will handle redirect
@@ -41,6 +52,11 @@ export default async function DashboardLayout({
     { href: '/capex', label: 'Capex Planning', icon: TrendingUp },
     { href: '/sentiment', label: 'Social Pulse', icon: MessageSquare },
   ]
+
+  // Add user management for admins and managers
+  if (userRole === 'admin' || userRole === 'manager') {
+    navItems.push({ href: '/users', label: 'User Management', icon: Users })
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
