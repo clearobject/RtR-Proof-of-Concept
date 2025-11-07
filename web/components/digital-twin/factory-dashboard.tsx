@@ -115,19 +115,19 @@ export function FactoryDashboard() {
         </Card>
         <Card className="p-4">
           <h3 className="text-sm font-medium text-rtr-slate mb-1">Operational</h3>
-          <p className="text-2xl font-bold text-rtr-success">{stats.operational}</p>
+          <p className="text-2xl font-bold text-green-600">{stats.operational}</p>
         </Card>
         <Card className="p-4">
           <h3 className="text-sm font-medium text-rtr-slate mb-1">Warning</h3>
-          <p className="text-2xl font-bold text-rtr-warning">{stats.warning}</p>
+          <p className="text-2xl font-bold text-amber-600">{stats.warning}</p>
         </Card>
         <Card className="p-4">
           <h3 className="text-sm font-medium text-rtr-slate mb-1">Critical</h3>
-          <p className="text-2xl font-bold text-rtr-danger">{stats.critical}</p>
+          <p className="text-2xl font-bold text-red-600">{stats.critical}</p>
         </Card>
         <Card className="p-4">
           <h3 className="text-sm font-medium text-rtr-slate mb-1">Active Alerts</h3>
-          <p className="text-2xl font-bold text-rtr-danger">{stats.alerts}</p>
+          <p className="text-2xl font-bold text-red-600">{stats.alerts}</p>
         </Card>
       </div>
 

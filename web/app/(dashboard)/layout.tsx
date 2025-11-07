@@ -97,7 +97,7 @@ export default async function DashboardLayout({
   return (
     <div className="flex h-screen bg-rtr-cream">
       {/* Sidebar */}
-      <aside className="w-64 bg-rtr-wine border-r border-rtr-wine-light flex flex-col">
+      <aside className="w-72 bg-rtr-wine border-r border-rtr-wine-light flex flex-col flex-shrink-0">
         <div className="p-6 border-b border-rtr-wine-light/20">
           <h1 className="text-xl font-bold text-white">
             Rent the Runway
