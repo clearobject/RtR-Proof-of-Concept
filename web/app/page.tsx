@@ -1,23 +1,29 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+'use client'
 
-// Force dynamic rendering to avoid build-time errors
-export const dynamic = 'force-dynamic'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
-export default async function HomePage() {
-  try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+export default function HomePage() {
+  const router = useRouter()
 
-    if (user) {
-      redirect('/dashboard')
-    } else {
-      redirect('/login')
-    }
-  } catch (error) {
-    // If Supabase is not configured, redirect to login
-    redirect('/login')
-  }
+  useEffect(() => {
+    // Client-side redirect to login
+    // Middleware will handle auth checks
+    router.replace('/login')
+  }, [router])
+
+  // Show content immediately - don't wait for useEffect
+  // This ensures something renders even if JavaScript fails
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-rtr-cream">
+      <div className="text-center">
+        <p className="text-rtr-slate">Redirecting to login...</p>
+        <p className="text-sm text-rtr-slate mt-2">
+          <a href="/login" className="text-rtr-wine underline">
+            Click here if you are not redirected
+          </a>
+        </p>
+      </div>
+    </div>
+  )
 }

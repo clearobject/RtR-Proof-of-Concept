@@ -9,19 +9,26 @@ export default async function LoginLayout({
 }: {
   children: React.ReactNode
 }) {
-  try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+  // Check if Supabase is configured before trying to use it
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-    // If user is already logged in, redirect to dashboard
-    if (user) {
-      redirect('/dashboard')
+  // Only check auth if Supabase is configured
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const supabase = await createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      // If user is already logged in, redirect to dashboard
+      if (user) {
+        redirect('/dashboard')
+      }
+    } catch (error) {
+      // If there's an error checking auth, just show login page
+      // This allows the app to work even if Supabase has issues
     }
-  } catch (error) {
-    // If Supabase is not configured or there's an error, just show login page
-    // This allows the build to succeed even without env vars
   }
 
   return <>{children}</>
