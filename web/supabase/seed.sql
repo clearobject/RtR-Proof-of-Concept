@@ -82,12 +82,44 @@ END $$;
 
 -- Insert Sample Social Posts (Social Pulse)
 INSERT INTO social_posts (id, platform, content, author, sentiment_score, category, occasion, engagement_count, posted_at) VALUES
+  -- Recent positive posts
   ('aa0e8400-e29b-41d4-a716-446655440000', 'instagram', 'Love my @renttherunway dress for tonight! Perfect fit and arrived on time! 💕', 'fashionista123', 9, NULL, 'gala', 245, NOW() - INTERVAL '2 hours'),
-  ('aa0e8400-e29b-41d4-a716-446655440001', 'twitter', 'Disappointed with @renttherunway - dress arrived with a stain and customer service was slow to respond', 'user456', 3, 'quality', NULL, 12, NOW() - INTERVAL '5 hours'),
   ('aa0e8400-e29b-41d4-a716-446655440002', 'reddit', 'RTR saved my wedding! The dress was perfect and arrived exactly when promised. Highly recommend!', 'bride2024', 10, NULL, 'wedding', 89, NOW() - INTERVAL '1 day'),
-  ('aa0e8400-e29b-41d4-a716-446655440003', 'instagram', 'My @renttherunway order was delayed by 2 days. Had to scramble for my event 😞', 'stylist789', 4, 'delivery', 'interview', 34, NOW() - INTERVAL '3 hours'),
   ('aa0e8400-e29b-41d4-a716-446655440004', 'tiktok', 'RTR haul! Everything fits perfectly and looks brand new. Obsessed! #RentTheRunway', 'tiktoker321', 9, NULL, NULL, 1567, NOW() - INTERVAL '6 hours'),
-  ('aa0e8400-e29b-41d4-a716-446655440005', 'facebook', 'Not happy with my recent RTR experience. Dress smelled like chemicals and had visible wear marks.', 'reviewer999', 2, 'quality', NULL, 8, NOW() - INTERVAL '4 hours')
+  
+  -- Recent negative posts
+  ('aa0e8400-e29b-41d4-a716-446655440001', 'twitter', 'Disappointed with @renttherunway - dress arrived with a stain and customer service was slow to respond', 'user456', 3, 'quality', NULL, 12, NOW() - INTERVAL '5 hours'),
+  ('aa0e8400-e29b-41d4-a716-446655440003', 'instagram', 'My @renttherunway order was delayed by 2 days. Had to scramble for my event 😞', 'stylist789', 4, 'delivery', 'interview', 34, NOW() - INTERVAL '3 hours'),
+  ('aa0e8400-e29b-41d4-a716-446655440005', 'facebook', 'Not happy with my recent RTR experience. Dress smelled like chemicals and had visible wear marks.', 'reviewer999', 2, 'quality', NULL, 8, NOW() - INTERVAL '4 hours'),
+  
+  -- More diverse posts (last 7 days)
+  ('aa0e8400-e29b-41d4-a716-446655440010', 'instagram', 'Just got my @renttherunway package! The dress fits like a dream and looks brand new. Customer service was super helpful too!', 'stylequeen88', 9, NULL, 'party', 432, NOW() - INTERVAL '8 hours'),
+  ('aa0e8400-e29b-41d4-a716-446655440011', 'twitter', 'RTR came through for my job interview! Professional look, great quality, and fast shipping. Will definitely use again.', 'careerpro2024', 8, NULL, 'interview', 67, NOW() - INTERVAL '12 hours'),
+  ('aa0e8400-e29b-41d4-a716-446655440012', 'reddit', 'Has anyone else had issues with RTR billing? I was charged twice for the same order and it took 3 days to get a refund.', 'confuseduser', 4, 'billing', NULL, 234, NOW() - INTERVAL '1 day'),
+  ('aa0e8400-e29b-41d4-a716-446655440013', 'tiktok', 'RTR unboxing gone wrong 😂 The dress I ordered was completely different from what I selected. Still cute though!', 'tiktokfashion', 7, 'quality', NULL, 892, NOW() - INTERVAL '18 hours'),
+  ('aa0e8400-e29b-41d4-a716-446655440014', 'facebook', 'My daughter''s prom dress from RTR was absolutely stunning! She felt like a princess. Thank you for making her night special!', 'proudmom', 10, NULL, 'prom', 156, NOW() - INTERVAL '2 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440015', 'instagram', 'Ugh, my RTR dress arrived damaged. There''s a tear in the fabric. Waiting to hear back from customer service...', 'disappointed123', 3, 'quality', 'wedding', 45, NOW() - INTERVAL '1 day'),
+  ('aa0e8400-e29b-41d4-a716-446655440016', 'twitter', 'Shoutout to @renttherunway for the amazing selection! Found the perfect dress for my company gala. Fit was spot on!', 'executivepro', 9, NULL, 'gala', 123, NOW() - INTERVAL '3 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440017', 'reddit', 'RTR availability is terrible lately. Everything I want is booked months in advance. What''s going on?', 'frustrateduser', 5, 'availability', NULL, 567, NOW() - INTERVAL '2 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440018', 'tiktok', 'RTR try-on haul! Some hits, some misses, but overall love the concept. The fit guide helped a lot!', 'fashionlover', 8, 'fit', NULL, 2341, NOW() - INTERVAL '4 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440019', 'facebook', 'Customer service at RTR is amazing! They helped me find the perfect dress when I was in a pinch. Highly recommend!', 'satisfiedcustomer', 9, 'customer_service', NULL, 89, NOW() - INTERVAL '5 days'),
+  
+  -- Posts from last 2 weeks
+  ('aa0e8400-e29b-41d4-a716-446655440020', 'instagram', 'My RTR dress was too small even though I followed the size guide. Had to return it and missed my event. So disappointed.', 'sizeproblem', 3, 'fit', 'party', 78, NOW() - INTERVAL '6 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440021', 'twitter', 'RTR delivery was late AGAIN. This is the third time. Starting to lose faith in the service.', 'lateorder', 4, 'delivery', NULL, 34, NOW() - INTERVAL '7 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440022', 'reddit', 'Just tried RTR for the first time and I''m hooked! The quality is great and the selection is incredible.', 'newuser', 9, NULL, NULL, 145, NOW() - INTERVAL '8 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440023', 'tiktok', 'RTR dress smelled like it was just dry cleaned. Is this normal? The smell is really strong.', 'smellconcern', 6, 'quality', NULL, 456, NOW() - INTERVAL '9 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440024', 'facebook', 'Best experience with RTR! The dress was perfect, arrived on time, and customer service was responsive.', 'happycustomer', 10, NULL, 'wedding', 234, NOW() - INTERVAL '10 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440025', 'instagram', 'RTR dress had a stain on it when it arrived. They sent a replacement quickly but still inconvenient.', 'stainissue', 6, 'quality', NULL, 67, NOW() - INTERVAL '11 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440026', 'twitter', 'Love the sustainability aspect of RTR! Renting instead of buying is the future of fashion.', 'ecofashion', 9, NULL, NULL, 789, NOW() - INTERVAL '12 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440027', 'reddit', 'RTR billing error - charged me for damage I didn''t cause. Still fighting with customer service after 2 weeks.', 'billingfight', 2, 'billing', NULL, 123, NOW() - INTERVAL '13 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440028', 'tiktok', 'RTR unboxing! Everything is so well packaged and the dress looks amazing. Can''t wait to wear it!', 'unboxing', 9, NULL, NULL, 3456, NOW() - INTERVAL '14 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440029', 'facebook', 'My RTR order was cancelled last minute. Had to find something else for my event. Very frustrating experience.', 'cancelledorder', 3, 'availability', 'gala', 56, NOW() - INTERVAL '15 days'),
+  
+  -- Trustpilot reviews
+  ('aa0e8400-e29b-41d4-a716-446655440030', 'trustpilot', 'Excellent service! The dress was beautiful and arrived exactly when promised. Will definitely use RTR again.', 'trustpilot_user1', 9, NULL, NULL, 12, NOW() - INTERVAL '3 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440031', 'trustpilot', 'Poor quality control. Received a dress with visible damage. Customer service was slow to respond.', 'trustpilot_user2', 4, 'quality', NULL, 8, NOW() - INTERVAL '5 days'),
+  ('aa0e8400-e29b-41d4-a716-446655440032', 'trustpilot', 'Great concept but execution needs work. Delivery delays and sizing issues are common.', 'trustpilot_user3', 6, 'delivery', NULL, 15, NOW() - INTERVAL '7 days')
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert Alert Thresholds
