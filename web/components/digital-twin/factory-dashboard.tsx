@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/browser'
 import { Machine, Alert } from '@/lib/types'
 import { FactoryLayout } from './factory-layout'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { Filter, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 
@@ -108,37 +109,37 @@ export function FactoryDashboard() {
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-1">Total</h3>
-          <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-1">Operational</h3>
-          <p className="text-2xl font-bold text-green-600">{stats.operational}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-1">Warning</h3>
-          <p className="text-2xl font-bold text-yellow-600">{stats.warning}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-1">Critical</h3>
-          <p className="text-2xl font-bold text-red-600">{stats.critical}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-1">Active Alerts</h3>
-          <p className="text-2xl font-bold text-red-600">{stats.alerts}</p>
-        </div>
+        <Card className="p-4">
+          <h3 className="text-sm font-medium text-rtr-slate mb-1">Total</h3>
+          <p className="text-2xl font-bold text-rtr-ink">{stats.total}</p>
+        </Card>
+        <Card className="p-4">
+          <h3 className="text-sm font-medium text-rtr-slate mb-1">Operational</h3>
+          <p className="text-2xl font-bold text-rtr-success">{stats.operational}</p>
+        </Card>
+        <Card className="p-4">
+          <h3 className="text-sm font-medium text-rtr-slate mb-1">Warning</h3>
+          <p className="text-2xl font-bold text-rtr-warning">{stats.warning}</p>
+        </Card>
+        <Card className="p-4">
+          <h3 className="text-sm font-medium text-rtr-slate mb-1">Critical</h3>
+          <p className="text-2xl font-bold text-rtr-danger">{stats.critical}</p>
+        </Card>
+        <Card className="p-4">
+          <h3 className="text-sm font-medium text-rtr-slate mb-1">Active Alerts</h3>
+          <p className="text-2xl font-bold text-rtr-danger">{stats.alerts}</p>
+        </Card>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <Card className="p-4">
         <div className="flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-rtr-ink mb-1">
               Search
             </label>
             <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-rtr-slate" />
               <Input
                 placeholder="Search machines..."
                 value={filter.search || ''}
@@ -150,7 +151,7 @@ export function FactoryDashboard() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-rtr-ink mb-1">
               Type
             </label>
             <select
@@ -158,18 +159,18 @@ export function FactoryDashboard() {
               onChange={(e) =>
                 setFilter({ ...filter, type: e.target.value || undefined })
               }
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white"
+              className="rounded-lg border border-rtr-border px-3 py-2 text-sm text-rtr-ink bg-white focus:outline-none focus:ring-2 focus:ring-rtr-wine focus:ring-offset-1"
             >
-              <option value="" className="text-gray-600">All Types</option>
+              <option value="" className="text-rtr-slate">All Types</option>
               {machineTypes.map((type) => (
-                <option key={type} value={type} className="text-gray-900">
+                <option key={type} value={type} className="text-rtr-ink">
                   {type.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                 </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-rtr-ink mb-1">
               Status
             </label>
             <select
@@ -177,18 +178,18 @@ export function FactoryDashboard() {
               onChange={(e) =>
                 setFilter({ ...filter, status: e.target.value || undefined })
               }
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white"
+              className="rounded-lg border border-rtr-border px-3 py-2 text-sm text-rtr-ink bg-white focus:outline-none focus:ring-2 focus:ring-rtr-wine focus:ring-offset-1"
             >
-              <option value="" className="text-gray-600">All Statuses</option>
+              <option value="" className="text-rtr-slate">All Statuses</option>
               {statuses.map((status) => (
-                <option key={status} value={status} className="text-gray-900">
+                <option key={status} value={status} className="text-rtr-ink">
                   {status.charAt(0).toUpperCase() + status.slice(1)}
                 </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-rtr-ink mb-1">
               Zone
             </label>
             <select
@@ -196,11 +197,11 @@ export function FactoryDashboard() {
               onChange={(e) =>
                 setFilter({ ...filter, zone: e.target.value || undefined })
               }
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white"
+              className="rounded-lg border border-rtr-border px-3 py-2 text-sm text-rtr-ink bg-white focus:outline-none focus:ring-2 focus:ring-rtr-wine focus:ring-offset-1"
             >
-              <option value="" className="text-gray-600">All Zones</option>
+              <option value="" className="text-rtr-slate">All Zones</option>
               {zones.map((zone) => (
-                <option key={zone} value={zone} className="text-gray-900">
+                <option key={zone} value={zone} className="text-rtr-ink">
                   {zone}
                 </option>
               ))}
@@ -208,7 +209,7 @@ export function FactoryDashboard() {
           </div>
           {(filter.type || filter.status || filter.zone || filter.search) && (
             <Button
-              variant="outline"
+              variant="secondary"
               onClick={() => setFilter({})}
               className="h-10"
             >
@@ -216,14 +217,14 @@ export function FactoryDashboard() {
             </Button>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* Factory Layout */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold text-rtr-ink mb-4">
           Factory Layout - New Jersey Facility
         </h2>
-        <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
+        <div className="border border-rtr-border rounded-lg bg-white overflow-hidden">
           <FactoryLayout
             machines={machines}
             onMachineClick={(machine) => {
@@ -231,7 +232,7 @@ export function FactoryDashboard() {
             }}
           />
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

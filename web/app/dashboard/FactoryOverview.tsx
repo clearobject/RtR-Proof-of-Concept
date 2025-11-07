@@ -15,10 +15,10 @@ type SupabaseMachineStatus = {
 type MachineHealthStatus = 'running' | 'warning' | 'critical' | 'not_running'
 
 const STATUS_COLORS: Record<MachineHealthStatus, string> = {
-  running: '#16a34a',
-  warning: '#f97316',
-  critical: '#dc2626',
-  not_running: '#d1d5db',
+  running: '#10b981', // rtr-success
+  warning: '#f59e0b', // rtr-warning
+  critical: '#ef4444', // rtr-danger
+  not_running: '#d1d5db', // neutral gray
 }
 
 const FALLBACK_COLOR = '#d1d5db'

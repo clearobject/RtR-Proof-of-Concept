@@ -1,40 +1,125 @@
 @import "tailwindcss";
 
+/* RTR Design System - Color Tokens */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* RTR Brand Colors */
+  --rtr-wine: #29000b;
+  --rtr-wine-light: #4a0018;
+  --rtr-blush: #FDECEF;
+  --rtr-cream: #FFF8F4;
+  --rtr-ink: #111827;
+  --rtr-slate: #6b7280;
+  --rtr-border: #E5E7EB;
+  
+  /* Status Colors */
+  --rtr-success: #10b981;
+  --rtr-warning: #f59e0b;
+  --rtr-danger: #ef4444;
+  
+  /* Legacy support */
+  --background: var(--rtr-cream);
+  --foreground: var(--rtr-ink);
 }
 
 @theme inline {
+  /* RTR Color Palette */
+  --color-rtr-wine: var(--rtr-wine);
+  --color-rtr-wine-light: var(--rtr-wine-light);
+  --color-rtr-blush: var(--rtr-blush);
+  --color-rtr-cream: var(--rtr-cream);
+  --color-rtr-ink: var(--rtr-ink);
+  --color-rtr-slate: var(--rtr-slate);
+  --color-rtr-border: var(--rtr-border);
+  --color-rtr-success: var(--rtr-success);
+  --color-rtr-warning: var(--rtr-warning);
+  --color-rtr-danger: var(--rtr-danger);
+  
+  /* Legacy support */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  
+  /* Typography */
+  --font-sans: var(--font-inter), "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  
+  /* Shadows - Premium but subtle */
+  --shadow-rtr-card: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+  --shadow-rtr-elevated: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--rtr-cream);
+  color: var(--rtr-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans);
+  color: var(--rtr-ink);
+  font-weight: 600;
+}
+
+/* Links */
+a {
+  color: var(--rtr-wine);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+a:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+a:focus-visible {
+  outline: 2px solid var(--rtr-wine);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Buttons - Base styles */
+button {
+  font-family: var(--font-sans);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--rtr-wine);
+  outline-offset: 2px;
+}
+
+/* Scrollbar styling - subtle and polished */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--rtr-cream);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--rtr-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--rtr-slate);
 }
 
 /* Accessibility: Ensure select elements and options have proper text contrast */
 select {
-  color: rgb(17, 24, 39); /* gray-900 */
+  color: var(--rtr-ink);
+  font-family: var(--font-sans);
 }
 
 select option {
-  color: rgb(17, 24, 39); /* gray-900 */
+  color: var(--rtr-ink);
   background-color: white;
 }
 
 select option:disabled {
-  color: rgb(107, 114, 128); /* gray-500 */
+  color: var(--rtr-slate);
 }

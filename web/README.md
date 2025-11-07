@@ -18,7 +18,16 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Inter](https://rsms.me/inter/) and Geist Mono fonts.
+
+## Design System
+
+This project uses a custom design system inspired by Rent the Runway's brand identity. See [`docs/design-system.md`](../docs/design-system.md) for complete documentation on:
+
+- Color palette and usage
+- Typography guidelines
+- Component library (Button, Card, Badge)
+- Design principles and best practices
 
 ## Learn More
 

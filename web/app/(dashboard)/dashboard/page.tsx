@@ -2,18 +2,21 @@
 export const dynamic = 'force-dynamic'
 
 import FactoryOverview from '@/app/dashboard/FactoryOverview'
+import { Card } from '@/components/ui/card'
 
 export default function DashboardPage() {
   return (
-    <div className="p-8">
+    <div className="max-w-7xl mx-auto px-4 py-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Digital Twin</h1>
-        <p className="text-gray-600 mt-2">
+        <h1 className="text-3xl font-bold text-rtr-ink">Digital Twin</h1>
+        <p className="text-rtr-slate mt-2">
           Factory floor overview and operational insights
         </p>
       </div>
 
-      <FactoryOverview />
+      <Card className="p-6">
+        <FactoryOverview />
+      </Card>
     </div>
   )
 }

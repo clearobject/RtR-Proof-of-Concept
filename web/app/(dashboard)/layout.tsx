@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import {
   LayoutDashboard,
@@ -10,6 +9,7 @@ import {
   Users,
 } from 'lucide-react'
 import { SignOutButton } from '@/components/auth/sign-out-button'
+import { NavLink } from '@/components/dashboard/nav-link'
 
 // Force dynamic rendering to avoid build-time errors
 export const dynamic = 'force-dynamic'
@@ -59,34 +59,29 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-rtr-cream">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-6 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">
+      <aside className="w-64 bg-rtr-wine border-r border-rtr-wine-light flex flex-col">
+        <div className="p-6 border-b border-rtr-wine-light/20">
+          <h1 className="text-xl font-bold text-white">
             Rent the Runway
           </h1>
-          <p className="text-sm text-gray-600 mt-1">Operations Portal</p>
+          <p className="text-sm text-white/80 mt-1">Operations Portal</p>
         </div>
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex items-center gap-3 px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-              >
-                <Icon className="w-5 h-5" />
-                {item.label}
-              </Link>
-            )
-          })}
+          {navItems.map((item) => (
+            <NavLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              icon={item.icon}
+            />
+          ))}
         </nav>
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-rtr-wine-light/20">
           <div className="mb-4">
-            <p className="text-xs text-gray-500 mb-1">Signed in as</p>
-            <p className="text-sm font-medium text-gray-900">
+            <p className="text-xs text-white/70 mb-1">Signed in as</p>
+            <p className="text-sm font-medium text-white">
               {user?.email || 'User'}
             </p>
           </div>
@@ -95,7 +90,7 @@ export default async function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto bg-rtr-cream">
         {children}
       </main>
     </div>
