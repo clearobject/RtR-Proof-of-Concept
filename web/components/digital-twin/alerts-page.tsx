@@ -2,29 +2,51 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/browser'
-import { Alert, Machine } from '@/lib/types'
+import { Alert, Machine, UserProfile, MaintenanceTicket } from '@/lib/types'
 import { formatDateTime, getSeverityColor } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { AlertTriangle, Check, X, Search } from 'lucide-react'
+import { AlertTriangle, Check, X, Search, Wrench, Users, TrendingDown, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 export function AlertsPage() {
   const router = useRouter()
-  const [alerts, setAlerts] = useState<(Alert & { machine: Machine | null })[]>(
+  const [alerts, setAlerts] = useState<(Alert & { machine: Machine | null; ticket?: MaintenanceTicket | null })[]>(
     []
   )
+  const [technicians, setTechnicians] = useState<UserProfile[]>([])
+  const [machinesOutOfService, setMachinesOutOfService] = useState<Machine[]>([])
   const [loading, setLoading] = useState(true)
+  const [showTicketForm, setShowTicketForm] = useState(false)
+  const [selectedAlert, setSelectedAlert] = useState<Alert & { machine: Machine | null } | null>(null)
+  const [drillDownSeverity, setDrillDownSeverity] = useState<string | null>(null)
   const [filter, setFilter] = useState<{
     severity?: string
     acknowledged?: string
     search?: string
+    outOfService?: boolean
   }>({})
+
+  const [newTicket, setNewTicket] = useState<{
+    title: string
+    description: string
+    priority: 'low' | 'medium' | 'high' | 'urgent'
+    assigned_to: string
+    production_impact: boolean
+  }>({
+    title: '',
+    description: '',
+    priority: 'medium',
+    assigned_to: '',
+    production_impact: false,
+  })
 
   useEffect(() => {
     loadAlerts()
+    loadTechnicians()
+    loadMachinesOutOfService()
   }, [filter])
 
   const loadAlerts = async () => {
@@ -49,16 +71,75 @@ export function AlertsPage() {
       const { data, error } = await alertsQuery
 
       if (data) {
-        const alertsWithMachines = data.map((alert: any) => ({
-          ...alert,
-          machine: alert.machines,
-        }))
+        // Load tickets for each alert to check if ticket exists
+        const alertsWithMachines = await Promise.all(
+          data.map(async (alert: any) => {
+            // Check if there's an open ticket for this alert's machine
+            const { data: ticketData } = await supabase
+              .from('maintenance_tickets')
+              .select('*')
+              .eq('machine_id', alert.machine_id)
+              .in('status', ['open', 'in_progress'])
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single()
+
+            return {
+              ...alert,
+              machine: alert.machines,
+              ticket: ticketData || null,
+            }
+          })
+        )
         setAlerts(alertsWithMachines)
       }
     } catch (error) {
       console.error('Error loading alerts:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadTechnicians = async () => {
+    try {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .in('role', ['maintenance', 'manager', 'admin'])
+        .order('email')
+
+      if (data) {
+        setTechnicians(data as UserProfile[])
+      }
+    } catch (error) {
+      console.error('Error loading technicians:', error)
+    }
+  }
+
+  const loadMachinesOutOfService = async () => {
+    try {
+      const supabase = createClient()
+      // Get machines that are offline, critical, or maintenance status
+      // AND have open/in_progress tickets
+      const { data: machinesData } = await supabase
+        .from('machines')
+        .select('*, maintenance_tickets!inner(*)')
+        .in('status', ['offline', 'critical', 'maintenance'])
+        .in('maintenance_tickets.status', ['open', 'in_progress'])
+
+      if (machinesData) {
+        // Deduplicate machines
+        const uniqueMachines = machinesData.reduce((acc: Machine[], machine: any) => {
+          if (!acc.find((m) => m.id === machine.id)) {
+            acc.push(machine as Machine)
+          }
+          return acc
+        }, [])
+        setMachinesOutOfService(uniqueMachines)
+      }
+    } catch (error) {
+      console.error('Error loading machines out of service:', error)
     }
   }
 
@@ -88,8 +169,26 @@ export function AlertsPage() {
     }
   }
 
-  const handleCreateTicket = async (alert: Alert & { machine: Machine | null }) => {
-    if (!alert.machine) return
+  const handleOpenTicketForm = (alert: Alert & { machine: Machine | null }) => {
+    setSelectedAlert(alert)
+    setNewTicket({
+      title: `Maintenance Request: ${alert.machine?.name || 'Unknown Machine'}`,
+      description: alert.message,
+      priority:
+        alert.severity === 'critical'
+          ? 'urgent'
+          : alert.severity === 'high'
+            ? 'high'
+            : 'medium',
+      assigned_to: '',
+      production_impact: alert.machine?.status === 'offline' || alert.machine?.status === 'critical' || false,
+    })
+    setShowTicketForm(true)
+  }
+
+  const handleCreateTicket = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedAlert?.machine) return
 
     try {
       const supabase = createClient()
@@ -99,25 +198,54 @@ export function AlertsPage() {
 
       if (!user) return
 
-      const { error } = await supabase.from('maintenance_tickets').insert({
-        machine_id: alert.machine.id,
-        title: `Maintenance Request: ${alert.machine.name}`,
-        description: alert.message,
+      const ticketData: any = {
+        machine_id: selectedAlert.machine.id,
+        title: newTicket.title,
+        description: newTicket.description,
         status: 'open',
-        priority:
-          alert.severity === 'critical'
-            ? 'urgent'
-            : alert.severity === 'high'
-              ? 'high'
-              : 'medium',
+        priority: newTicket.priority,
         created_by: user.id,
-      })
+      }
+
+      if (newTicket.assigned_to) {
+        ticketData.assigned_to = newTicket.assigned_to
+      }
+
+      const { error } = await supabase.from('maintenance_tickets').insert(ticketData)
 
       if (!error) {
-        router.push('/maintenance')
+        // If production impact, update machine status
+        if (newTicket.production_impact && selectedAlert.machine) {
+          await supabase
+            .from('machines')
+            .update({ status: 'maintenance' })
+            .eq('id', selectedAlert.machine.id)
+        }
+
+        // Acknowledge the alert
+        await supabase
+          .from('alerts')
+          .update({
+            acknowledged: true,
+            acknowledged_by: user.id,
+            acknowledged_at: new Date().toISOString(),
+          })
+          .eq('id', selectedAlert.id)
+
+        setShowTicketForm(false)
+        setSelectedAlert(null)
+        loadAlerts()
+        loadMachinesOutOfService()
+        
+        // Optionally navigate to maintenance page
+        // router.push('/maintenance')
+      } else {
+        console.error('Error creating ticket:', error)
+        alert('Error creating ticket: ' + error.message)
       }
     } catch (error) {
       console.error('Error creating ticket:', error)
+      alert('Error creating ticket')
     }
   }
 
@@ -136,15 +264,32 @@ export function AlertsPage() {
     unacknowledged: alerts.filter((a) => !a.acknowledged).length,
     critical: alerts.filter((a) => a.severity === 'critical').length,
     high: alerts.filter((a) => a.severity === 'high').length,
+    outOfService: machinesOutOfService.length,
   }
 
-  const filteredAlerts = filter.search
+  let filteredAlerts = filter.search
     ? alerts.filter(
         (alert) =>
           alert.message.toLowerCase().includes(filter.search!.toLowerCase()) ||
           alert.machine?.name.toLowerCase().includes(filter.search!.toLowerCase())
       )
     : alerts
+
+  // Filter by drill-down severity
+  if (drillDownSeverity) {
+    filteredAlerts = filteredAlerts.filter((a) => a.severity === drillDownSeverity)
+  }
+
+  // Filter by out of service
+  if (filter.outOfService) {
+    filteredAlerts = filteredAlerts.filter(
+      (alert) =>
+        alert.machine &&
+        (alert.machine.status === 'offline' ||
+          alert.machine.status === 'critical' ||
+          alert.machine.status === 'maintenance')
+    )
+  }
 
   return (
     <div className="p-8">
@@ -156,7 +301,7 @@ export function AlertsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-sm font-medium text-gray-500 mb-1">Total</h3>
           <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
@@ -169,15 +314,72 @@ export function AlertsPage() {
             {stats.unacknowledged}
           </p>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Critical</h3>
+        <div className="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-gray-50" onClick={() => setDrillDownSeverity(drillDownSeverity === 'critical' ? null : 'critical')}>
+          <h3 className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-1">
+            Critical
+            {drillDownSeverity === 'critical' && <ChevronRight className="w-4 h-4" />}
+          </h3>
           <p className="text-2xl font-bold text-red-600">{stats.critical}</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-1">High</h3>
+        <div className="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-gray-50" onClick={() => setDrillDownSeverity(drillDownSeverity === 'high' ? null : 'high')}>
+          <h3 className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-1">
+            High
+            {drillDownSeverity === 'high' && <ChevronRight className="w-4 h-4" />}
+          </h3>
           <p className="text-2xl font-bold text-orange-600">{stats.high}</p>
         </div>
+        <div className="bg-white rounded-lg shadow p-4 border-2 border-red-300">
+          <h3 className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-1">
+            <TrendingDown className="w-4 h-4 text-red-600" />
+            Out of Service
+          </h3>
+          <p className="text-2xl font-bold text-red-600">{stats.outOfService}</p>
+          <p className="text-xs text-gray-500 mt-1">Impacting Production</p>
+        </div>
       </div>
+
+      {/* Machines Out of Service */}
+      {machinesOutOfService.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <h2 className="text-lg font-semibold text-red-900 mb-3 flex items-center gap-2">
+            <TrendingDown className="w-5 h-5" />
+            Machines Out of Service - Impacting Production
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {machinesOutOfService.map((machine) => {
+              const machineAlerts = alerts.filter(
+                (a) => a.machine_id === machine.id && !a.acknowledged
+              )
+              return (
+                <div
+                  key={machine.id}
+                  className="bg-white rounded-lg p-3 border border-red-200"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <Link
+                        href={`/machines/${machine.id}`}
+                        className="font-medium text-gray-900 hover:text-blue-600"
+                      >
+                        {machine.name}
+                      </Link>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {machine.zone} • {machine.type}
+                      </p>
+                      <p className="text-xs text-red-600 mt-1">
+                        {machineAlerts.length} active alert{machineAlerts.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium">
+                      {machine.status}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
@@ -229,10 +431,29 @@ export function AlertsPage() {
               <option value="true">Acknowledged</option>
             </select>
           </div>
-          {(filter.severity || filter.acknowledged || filter.search) && (
+          <div>
+            <Label>
+              <input
+                type="checkbox"
+                checked={filter.outOfService || false}
+                onChange={(e) =>
+                  setFilter({
+                    ...filter,
+                    outOfService: e.target.checked || undefined,
+                  })
+                }
+                className="mr-2"
+              />
+              Out of Service Only
+            </Label>
+          </div>
+          {(filter.severity || filter.acknowledged || filter.search || filter.outOfService || drillDownSeverity) && (
             <Button
               variant="outline"
-              onClick={() => setFilter({})}
+              onClick={() => {
+                setFilter({})
+                setDrillDownSeverity(null)
+              }}
               className="h-10"
             >
               Clear Filters
@@ -313,13 +534,21 @@ export function AlertsPage() {
                             <Check className="w-4 h-4 mr-1" />
                             Acknowledge
                           </Button>
-                          {alert.machine && (
+                          {alert.machine && !alert.ticket && (
                             <Button
                               size="sm"
-                              onClick={() => handleCreateTicket(alert)}
+                              onClick={() => handleOpenTicketForm(alert)}
                             >
+                              <Wrench className="w-4 h-4 mr-1" />
                               Create Ticket
                             </Button>
+                          )}
+                          {alert.ticket && (
+                            <Link href="/maintenance">
+                              <Button size="sm" variant="outline">
+                                View Ticket
+                              </Button>
+                            </Link>
                           )}
                         </>
                       )}
@@ -333,6 +562,169 @@ export function AlertsPage() {
           )}
         </div>
       </div>
+
+      {/* Ticket Creation Modal */}
+      {showTicketForm && selectedAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Create Maintenance Ticket
+                </h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowTicketForm(false)
+                    setSelectedAlert(null)
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* Alert Info */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle
+                    className={`w-5 h-5 ${
+                      selectedAlert.severity === 'critical'
+                        ? 'text-red-600'
+                        : selectedAlert.severity === 'high'
+                          ? 'text-orange-600'
+                          : 'text-yellow-600'
+                    }`}
+                  />
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-medium ${getSeverityColor(
+                      selectedAlert.severity
+                    )}`}
+                  >
+                    {selectedAlert.severity.toUpperCase()}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-900 font-medium mb-1">
+                  {selectedAlert.machine?.name}
+                </p>
+                <p className="text-sm text-gray-600">{selectedAlert.message}</p>
+              </div>
+
+              <form onSubmit={handleCreateTicket} className="space-y-4">
+                <div>
+                  <Label htmlFor="ticket-title">Title *</Label>
+                  <Input
+                    id="ticket-title"
+                    value={newTicket.title}
+                    onChange={(e) =>
+                      setNewTicket({ ...newTicket, title: e.target.value })
+                    }
+                    required
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="ticket-description">Description *</Label>
+                  <textarea
+                    id="ticket-description"
+                    value={newTicket.description}
+                    onChange={(e) =>
+                      setNewTicket({ ...newTicket, description: e.target.value })
+                    }
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                    rows={4}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="ticket-priority">Priority *</Label>
+                    <select
+                      id="ticket-priority"
+                      value={newTicket.priority}
+                      onChange={(e) =>
+                        setNewTicket({
+                          ...newTicket,
+                          priority: e.target.value as any,
+                        })
+                      }
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white"
+                      required
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="ticket-assignee">Assign to Technician</Label>
+                    <select
+                      id="ticket-assignee"
+                      value={newTicket.assigned_to}
+                      onChange={(e) =>
+                        setNewTicket({ ...newTicket, assigned_to: e.target.value })
+                      }
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 bg-white"
+                    >
+                      <option value="">Unassigned</option>
+                      {technicians.map((tech) => (
+                        <option key={tech.id} value={tech.id}>
+                          {tech.email} ({tech.role})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="production-impact"
+                    checked={newTicket.production_impact}
+                    onChange={(e) =>
+                      setNewTicket({
+                        ...newTicket,
+                        production_impact: e.target.checked,
+                      })
+                    }
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="production-impact" className="cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <TrendingDown className="w-4 h-4 text-red-600" />
+                      <span className="font-medium">Machine Out of Service - Impacting Production</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Checking this will mark the machine as "maintenance" status
+                    </p>
+                  </Label>
+                </div>
+
+                <div className="flex gap-2 pt-4 border-t">
+                  <Button type="submit" className="flex-1">
+                    <Wrench className="w-4 h-4 mr-2" />
+                    Create Ticket
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowTicketForm(false)
+                      setSelectedAlert(null)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

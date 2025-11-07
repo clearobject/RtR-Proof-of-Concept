@@ -7,11 +7,11 @@ import { formatDateTime, getStatusColor } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Search, Filter, Calendar, CheckCircle } from 'lucide-react'
+import { Plus, Search, Filter, Calendar, CheckCircle, Users } from 'lucide-react'
 import Link from 'next/link'
 
 export default function MaintenancePage() {
-  const [tickets, setTickets] = useState<MaintenanceTicket[]>([])
+  const [tickets, setTickets] = useState<(MaintenanceTicket & { machine?: Machine | null; assigned_user?: { email: string; role: string } | null })[]>([])
   const [machines, setMachines] = useState<Machine[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -57,7 +57,26 @@ export default function MaintenancePage() {
       ])
 
       if (ticketsResult.data) {
-        setTickets(ticketsResult.data as MaintenanceTicket[])
+        // Load machine and assigned user details for each ticket
+        const ticketsWithDetails = await Promise.all(
+          ticketsResult.data.map(async (ticket: any) => {
+            const [machineResult, userResult] = await Promise.all([
+              ticket.machine_id
+                ? supabase.from('machines').select('*').eq('id', ticket.machine_id).single()
+                : Promise.resolve({ data: null }),
+              ticket.assigned_to
+                ? supabase.from('user_profiles').select('email, role').eq('id', ticket.assigned_to).single()
+                : Promise.resolve({ data: null }),
+            ])
+
+            return {
+              ...ticket,
+              machine: machineResult.data || null,
+              assigned_user: userResult.data || null,
+            }
+          })
+        )
+        setTickets(ticketsWithDetails)
       }
       if (machinesResult.data) {
         setMachines(machinesResult.data as Machine[])
@@ -357,17 +376,30 @@ export default function MaintenancePage() {
                         <p className="text-sm text-gray-600 mb-2">
                           {ticket.description}
                         </p>
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
                           <span>
                             Created: {formatDateTime(ticket.created_at)}
                           </span>
-                          {ticket.machine_id && (
-                            <Link
-                              href={`/machines/${ticket.machine_id}`}
-                              className="text-blue-600 hover:underline"
-                            >
-                              View Machine
-                            </Link>
+                          {ticket.assigned_user && (
+                            <span className="flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              Assigned to: {ticket.assigned_user.email} ({ticket.assigned_user.role})
+                            </span>
+                          )}
+                          {ticket.machine && (
+                            <>
+                              <Link
+                                href={`/machines/${ticket.machine.id}`}
+                                className="text-blue-600 hover:underline"
+                              >
+                                View Machine
+                              </Link>
+                              {(ticket.machine.status === 'offline' || ticket.machine.status === 'critical' || ticket.machine.status === 'maintenance') && (
+                                <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium">
+                                  Out of Service
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
