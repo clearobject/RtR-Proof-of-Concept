@@ -1,7 +1,7 @@
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
 
-import { FactoryDashboard } from '@/components/digital-twin/factory-dashboard'
+import FactoryOverview from '@/app/dashboard/FactoryOverview'
 
 export default function DashboardPage() {
   return (
@@ -13,7 +13,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <FactoryDashboard />
+      <FactoryOverview />
     </div>
   )
 }
