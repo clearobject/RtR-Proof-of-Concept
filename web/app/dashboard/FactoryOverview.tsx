@@ -115,7 +115,7 @@ export default function FactoryOverview() {
                   current === machine.assetAlias ? null : current
                 )}
                 onClick={() =>
-                  router.push(`/machines/${encodeURIComponent(machine.assetAlias)}`)
+                  router.push(`/asset/${encodeURIComponent(machine.assetAlias)}`)
                 }
                 className="h-full w-full rounded-sm border border-black/20 shadow-sm outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500"
                 style={{

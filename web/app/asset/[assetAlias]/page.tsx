@@ -56,6 +56,21 @@ export default async function MachinePage({
 }) {
   const assetAlias = decodeURIComponent(params.assetAlias)
 
+  // Check if Supabase is configured before trying to use it
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return (
+      <div className="p-8">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">Configuration error: Supabase is not configured.</p>
+          <p className="text-sm text-gray-400">Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.</p>
+        </div>
+      </div>
+    )
+  }
+
   const supabase = await createClient()
 
   const {
