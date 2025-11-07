@@ -2,18 +2,41 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LucideIcon } from 'lucide-react'
+import {
+  LayoutDashboard,
+  Wrench,
+  Building2,
+  TrendingUp,
+  MessageSquare,
+  AlertTriangle,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+
+// Map icon names to icon components
+const iconMap: Record<string, LucideIcon> = {
+  LayoutDashboard,
+  Wrench,
+  Building2,
+  TrendingUp,
+  MessageSquare,
+  AlertTriangle,
+  Users,
+}
 
 interface NavLinkProps {
   href: string
   label: string
-  icon: LucideIcon
+  iconName: string
 }
 
-export function NavLink({ href, label, icon: Icon }: NavLinkProps) {
+export function NavLink({ href, label, iconName }: NavLinkProps) {
   const pathname = usePathname()
   const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+  
+  // Get the icon component from the map
+  const Icon = iconMap[iconName] || LayoutDashboard
 
   return (
     <Link

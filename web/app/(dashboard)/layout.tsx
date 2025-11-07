@@ -1,13 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import {
-  LayoutDashboard,
-  Wrench,
-  Building2,
-  TrendingUp,
-  MessageSquare,
-  AlertTriangle,
-  Users,
-} from 'lucide-react'
 import { SignOutButton } from '@/components/auth/sign-out-button'
 import { NavLink } from '@/components/dashboard/nav-link'
 
@@ -21,41 +12,86 @@ export default async function DashboardLayout({
 }) {
   let user = null
   let userRole: string | null = null
-  try {
-    const supabase = await createClient()
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser()
-    user = authUser
-    
-    if (authUser) {
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('role')
-        .eq('id', authUser.id)
-        .single()
-      userRole = profile?.role || null
+  
+  // Check if Supabase is configured before trying to use it
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const supabase = await createClient()
+      const {
+        data: { user: authUser },
+        error: authError,
+      } = await supabase.auth.getUser()
+      
+      if (authError) {
+        console.error('[Dashboard Layout] Auth error:', {
+          message: authError.message,
+          status: authError.status,
+          name: authError.name,
+        })
+        // Don't throw - allow page to render without user
+      } else {
+        user = authUser
+        
+        if (authUser) {
+          try {
+            const { data: profile, error: profileError } = await supabase
+              .from('user_profiles')
+              .select('role')
+              .eq('id', authUser.id)
+              .single()
+            
+            if (profileError) {
+              console.error('[Dashboard Layout] Profile query error:', {
+                message: profileError.message,
+                code: profileError.code,
+                details: profileError.details,
+                hint: profileError.hint,
+              })
+              // Table might not exist or user profile not created yet
+              // Continue without role - user can still access dashboard
+            } else {
+              userRole = profile?.role || null
+            }
+          } catch (profileErr: any) {
+            console.error('[Dashboard Layout] Profile fetch exception:', {
+              message: profileErr?.message,
+              stack: profileErr?.stack,
+            })
+            // Continue without role
+          }
+        }
+      }
+    } catch (error: any) {
+      // Log detailed error information for debugging
+      console.error('[Dashboard Layout] Fatal error:', {
+        message: error?.message,
+        code: (error as any)?.code,
+        stack: error?.stack,
+        name: error?.name,
+      })
+      // Don't throw - let the page render and middleware will handle auth
+      // This prevents the 500 error and allows graceful degradation
     }
-  } catch (error) {
-    // If Supabase is not configured, user will be null
-    // Middleware will handle redirect
-    // Silently handle errors - middleware will redirect if needed
-    // Don't log during build to avoid build failures
+  } else {
+    console.warn('[Dashboard Layout] Supabase not configured - env vars missing')
   }
 
 
   const navItems = [
-    { href: '/dashboard', label: 'Digital Twin', icon: LayoutDashboard },
-    { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
-    { href: '/maintenance', label: 'Maintenance', icon: Wrench },
-    { href: '/assets', label: 'Assets', icon: Building2 },
-    { href: '/capex', label: 'Capex Planning', icon: TrendingUp },
-    { href: '/sentiment', label: 'Social Pulse', icon: MessageSquare },
+    { href: '/dashboard', label: 'Digital Twin', iconName: 'LayoutDashboard' },
+    { href: '/alerts', label: 'Alerts', iconName: 'AlertTriangle' },
+    { href: '/maintenance', label: 'Maintenance', iconName: 'Wrench' },
+    { href: '/assets', label: 'Assets', iconName: 'Building2' },
+    { href: '/capex', label: 'Capex Planning', iconName: 'TrendingUp' },
+    { href: '/sentiment', label: 'Social Pulse', iconName: 'MessageSquare' },
   ]
 
   // Add user management for admins and managers
   if (userRole === 'admin' || userRole === 'manager') {
-    navItems.push({ href: '/users', label: 'User Management', icon: Users })
+    navItems.push({ href: '/users', label: 'User Management', iconName: 'Users' })
   }
 
   return (
@@ -74,7 +110,7 @@ export default async function DashboardLayout({
               key={item.href}
               href={item.href}
               label={item.label}
-              icon={item.icon}
+              iconName={item.iconName}
             />
           ))}
         </nav>
