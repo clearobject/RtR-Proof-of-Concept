@@ -206,14 +206,14 @@ export default function MachineDetailPage() {
             </h2>
             <div className="flex gap-2">
               <Button
-                variant={timeRange === '24h' ? 'default' : 'outline'}
+                variant={timeRange === '24h' ? 'primary' : 'secondary'}
                 size="sm"
                 onClick={() => setTimeRange('24h')}
               >
                 24h
               </Button>
               <Button
-                variant={timeRange === '7d' ? 'default' : 'outline'}
+                variant={timeRange === '7d' ? 'primary' : 'secondary'}
                 size="sm"
                 onClick={() => setTimeRange('7d')}
               >
