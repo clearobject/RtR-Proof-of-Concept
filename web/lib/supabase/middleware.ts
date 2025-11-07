@@ -61,11 +61,16 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect authenticated users away from login page
-  if (user && request.nextUrl.pathname === '/login') {
+  // Redirect authenticated users away from login page and root
+  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/')) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
+  }
+
+  // Allow unauthenticated access to root and login
+  if (!user && (request.nextUrl.pathname === '/' || request.nextUrl.pathname === '/login')) {
+    return response
   }
 
   return response

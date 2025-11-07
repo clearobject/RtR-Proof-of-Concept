@@ -1,29 +1,26 @@
-'use client'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import LoginForm from '@/components/auth/login-form'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+export const dynamic = 'force-dynamic'
 
-export default function HomePage() {
-  const router = useRouter()
+export default async function HomePage() {
+  // Check if user is authenticated
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  useEffect(() => {
-    // Client-side redirect to login
-    // Middleware will handle auth checks
-    router.replace('/login')
-  }, [router])
+    // If authenticated, redirect to dashboard
+    if (user) {
+      redirect('/dashboard')
+    }
+  } catch (error) {
+    // If there's an error, just show login page
+    console.error('Error checking auth:', error)
+  }
 
-  // Show content immediately - don't wait for useEffect
-  // This ensures something renders even if JavaScript fails
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-rtr-cream">
-      <div className="text-center">
-        <p className="text-rtr-slate">Redirecting to login...</p>
-        <p className="text-sm text-rtr-slate mt-2">
-          <a href="/login" className="text-rtr-wine underline">
-            Click here if you are not redirected
-          </a>
-        </p>
-      </div>
-    </div>
-  )
+  // If not authenticated, show login form
+  return <LoginForm />
 }
