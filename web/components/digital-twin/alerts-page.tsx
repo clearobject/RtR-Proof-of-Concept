@@ -449,7 +449,7 @@ export function AlertsPage() {
           </div>
           {(filter.severity || filter.acknowledged || filter.search || filter.outOfService || drillDownSeverity) && (
             <Button
-              variant="outline"
+              variant="secondary"
               onClick={() => {
                 setFilter({})
                 setDrillDownSeverity(null)
@@ -528,7 +528,7 @@ export function AlertsPage() {
                         <>
                           <Button
                             size="sm"
-                            variant="outline"
+                            variant="secondary"
                             onClick={() => handleAcknowledge(alert.id)}
                           >
                             <Check className="w-4 h-4 mr-1" />
@@ -545,7 +545,7 @@ export function AlertsPage() {
                           )}
                           {alert.ticket && (
                             <Link href="/maintenance">
-                              <Button size="sm" variant="outline">
+                              <Button size="sm" variant="secondary">
                                 View Ticket
                               </Button>
                             </Link>
@@ -573,7 +573,7 @@ export function AlertsPage() {
                   Create Maintenance Ticket
                 </h2>
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={() => {
                     setShowTicketForm(false)
@@ -711,7 +711,7 @@ export function AlertsPage() {
                   </Button>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     onClick={() => {
                       setShowTicketForm(false)
                       setSelectedAlert(null)

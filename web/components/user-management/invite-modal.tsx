@@ -130,7 +130,7 @@ export function InviteModal({ isOpen, onClose, onInviteCreated }: InviteModalPro
           </div>
 
           <div className="flex gap-2 justify-end">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="secondary" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>

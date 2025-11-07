@@ -136,7 +136,7 @@ export default function MachineDetailPage() {
         <div className="text-center">
           <p className="text-gray-500 mb-4">Machine not found</p>
           <Link href="/dashboard">
-            <Button variant="outline">Back to Dashboard</Button>
+            <Button variant="secondary">Back to Dashboard</Button>
           </Link>
         </div>
       </div>
@@ -175,7 +175,7 @@ export default function MachineDetailPage() {
     <div className="p-8">
       <div className="mb-6">
         <Link href="/dashboard">
-          <Button variant="outline" className="mb-4">
+          <Button variant="secondary" className="mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Dashboard
           </Button>

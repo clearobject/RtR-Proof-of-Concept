@@ -218,7 +218,7 @@ export default function AssetsPage() {
           </div>
           <div className="flex gap-2">
             <Button
-              variant="outline"
+              variant="secondary"
               onClick={() => setShowImportForm(!showImportForm)}
             >
               <Upload className="w-4 h-4 mr-2" />
@@ -285,7 +285,7 @@ export default function AssetsPage() {
                 </p>
               </div>
               <Button
-                variant="outline"
+                variant="secondary"
                 onClick={() => setShowImportForm(false)}
               >
                 Close
@@ -459,7 +459,7 @@ export default function AssetsPage() {
                 <Button type="submit">Create Asset</Button>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => setShowCreateForm(false)}
                 >
                   Cancel
@@ -542,7 +542,7 @@ export default function AssetsPage() {
             </div>
             {(filter.status || filter.criticality || filter.facility_id || filter.search) && (
               <Button
-                variant="outline"
+                variant="secondary"
                 onClick={() => setFilter({})}
                 className="h-10"
               >

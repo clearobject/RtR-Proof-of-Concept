@@ -341,7 +341,7 @@ export default function AssetDetailPage() {
     <div className="p-8">
       <div className="mb-6">
         <Button
-          variant="outline"
+          variant="secondary"
           onClick={() => router.push('/assets')}
           className="mb-4"
         >
@@ -630,14 +630,14 @@ export default function AssetDetailPage() {
           <div className="flex gap-2">
             <Button
               size="sm"
-              variant="outline"
+              variant="secondary"
               onClick={() => setShowCostForm(!showCostForm)}
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Cost
             </Button>
             <Link href="/maintenance">
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="secondary">
                 <Wrench className="w-4 h-4 mr-2" />
                 View Tickets
               </Button>
@@ -715,7 +715,7 @@ export default function AssetDetailPage() {
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => setShowCostForm(false)}
                 >
                   Cancel
@@ -766,7 +766,7 @@ export default function AssetDetailPage() {
           </h2>
           <Button
             size="sm"
-            variant="outline"
+            variant="secondary"
             onClick={() => setShowPMForm(!showPMForm)}
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -829,7 +829,7 @@ export default function AssetDetailPage() {
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => setShowPMForm(false)}
                 >
                   Cancel
@@ -905,7 +905,7 @@ export default function AssetDetailPage() {
           <h2 className="text-xl font-semibold text-gray-900">Downtime Events</h2>
           <Button
             size="sm"
-            variant="outline"
+            variant="secondary"
             onClick={() => setShowDowntimeForm(!showDowntimeForm)}
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -990,7 +990,7 @@ export default function AssetDetailPage() {
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => setShowDowntimeForm(false)}
                 >
                   Cancel

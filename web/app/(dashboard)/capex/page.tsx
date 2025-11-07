@@ -213,7 +213,7 @@ export default function CapexPage() {
               Replacement roadmap and capital expenditure planning
             </p>
           </div>
-          <Button onClick={handleExport} variant="outline">
+          <Button onClick={handleExport} variant="secondary">
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
@@ -355,7 +355,7 @@ export default function CapexPage() {
             </div>
             {filterCriticality && (
               <Button
-                variant="outline"
+                variant="secondary"
                 onClick={() => setFilterCriticality('')}
                 className="h-10"
               >

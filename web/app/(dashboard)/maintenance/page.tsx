@@ -269,7 +269,7 @@ export default function MaintenancePage() {
                 <Button type="submit">Create Ticket</Button>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => setShowCreateForm(false)}
                 >
                   Cancel
@@ -333,7 +333,7 @@ export default function MaintenancePage() {
             </div>
             {(filter.status || filter.priority || filter.search) && (
               <Button
-                variant="outline"
+                variant="secondary"
                 onClick={() => setFilter({})}
                 className="h-10"
               >
@@ -427,7 +427,7 @@ export default function MaintenancePage() {
                         {ticket.status === 'resolved' && (
                           <Button
                             size="sm"
-                            variant="outline"
+                            variant="secondary"
                             onClick={() =>
                               handleUpdateStatus(ticket.id, 'closed')
                             }

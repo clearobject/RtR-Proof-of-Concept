@@ -75,7 +75,7 @@ export function QRCodeModal({ isOpen, onClose, inviteUrl }: QRCodeModalProps) {
               />
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={handleCopy}
                 className="flex-shrink-0"
@@ -89,7 +89,7 @@ export function QRCodeModal({ isOpen, onClose, inviteUrl }: QRCodeModalProps) {
           <div className="flex gap-2 w-full">
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={handleDownload}
               className="flex-1"
             >
@@ -98,7 +98,7 @@ export function QRCodeModal({ isOpen, onClose, inviteUrl }: QRCodeModalProps) {
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={onClose}
               className="flex-1"
             >

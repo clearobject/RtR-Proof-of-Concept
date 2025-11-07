@@ -195,7 +195,7 @@ export default function UsersPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex gap-2">
                           <Button
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
                             onClick={() => handleCopyInviteLink(invite.token)}
                           >
@@ -206,7 +206,7 @@ export default function UsersPage() {
                             )}
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="secondary"
                             size="sm"
                             onClick={() => handleShowQR(invite.token)}
                           >
@@ -281,7 +281,7 @@ export default function UsersPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex gap-2">
                       <Button
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                         onClick={() => setEditingUser({ ...user })}
                       >
@@ -289,7 +289,7 @@ export default function UsersPage() {
                       </Button>
                       {isAdmin && user.id !== currentUser?.id && (
                         <Button
-                          variant="outline"
+                          variant="secondary"
                           size="sm"
                           onClick={() => handleDeleteUser(user.id)}
                           className="text-red-600 hover:text-red-700"
