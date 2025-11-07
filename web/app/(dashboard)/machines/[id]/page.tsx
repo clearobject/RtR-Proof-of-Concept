@@ -105,6 +105,7 @@ export default function MachineDetailPage() {
 
       const { error } = await supabase.from('maintenance_tickets').insert({
         machine_id: machine.id,
+        alert_id: alert.id,
         title: `Maintenance Request: ${machine.name}`,
         description: alert.message,
         status: 'open',
@@ -113,6 +114,22 @@ export default function MachineDetailPage() {
       })
 
       if (!error) {
+        await supabase
+          .from('alerts')
+          .update({
+            acknowledged: true,
+            acknowledged_by: user.id,
+            acknowledged_at: new Date().toISOString(),
+          })
+          .eq('id', alert.id)
+
+        if (alert.severity === 'critical') {
+          await supabase
+            .from('machines')
+            .update({ status: 'maintenance' })
+            .eq('id', machine.id)
+        }
+
         router.push('/maintenance')
       }
     } catch (error) {

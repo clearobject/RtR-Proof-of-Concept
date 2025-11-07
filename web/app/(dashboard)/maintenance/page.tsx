@@ -2,16 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/browser'
-import { MaintenanceTicket, Machine } from '@/lib/types'
+import { MaintenanceTicket, Machine, Alert } from '@/lib/types'
 import { formatDateTime, getStatusColor } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Search, Filter, Calendar, CheckCircle, Users } from 'lucide-react'
+import { Plus, Search, Filter, Calendar, CheckCircle, Users, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 
 export default function MaintenancePage() {
-  const [tickets, setTickets] = useState<(MaintenanceTicket & { machine?: Machine | null; assigned_user?: { email: string; role: string } | null })[]>([])
+  const [tickets, setTickets] = useState<
+    (MaintenanceTicket & {
+      machine?: Machine | null
+      assigned_user?: { email: string; role: string } | null
+      alert?: Alert | null
+    })[]
+  >([])
   const [machines, setMachines] = useState<Machine[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -60,12 +66,15 @@ export default function MaintenancePage() {
         // Load machine and assigned user details for each ticket
         const ticketsWithDetails = await Promise.all(
           ticketsResult.data.map(async (ticket: any) => {
-            const [machineResult, userResult] = await Promise.all([
+            const [machineResult, userResult, alertResult] = await Promise.all([
               ticket.machine_id
                 ? supabase.from('machines').select('*').eq('id', ticket.machine_id).single()
                 : Promise.resolve({ data: null }),
               ticket.assigned_to
                 ? supabase.from('user_profiles').select('email, role').eq('id', ticket.assigned_to).single()
+                : Promise.resolve({ data: null }),
+              ticket.alert_id
+                ? supabase.from('alerts').select('*').eq('id', ticket.alert_id).maybeSingle()
                 : Promise.resolve({ data: null }),
             ])
 
@@ -73,6 +82,7 @@ export default function MaintenancePage() {
               ...ticket,
               machine: machineResult.data || null,
               assigned_user: userResult.data || null,
+              alert: alertResult.data || null,
             }
           })
         )
@@ -386,6 +396,19 @@ export default function MaintenancePage() {
                               Assigned to: {ticket.assigned_user.email} ({ticket.assigned_user.role})
                             </span>
                           )}
+                      {ticket.alert && (
+                        <span className="flex items-center gap-1 text-amber-600">
+                          <AlertTriangle className="w-3 h-3" />
+                          Alert severity: {ticket.alert.severity}
+                          <Link
+                            href="/dashboard/alerts"
+                            className="text-blue-600 hover:underline"
+                            title={ticket.alert.message}
+                          >
+                            View alert
+                          </Link>
+                        </span>
+                      )}
                           {ticket.machine && (
                             <>
                               <Link

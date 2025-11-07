@@ -74,20 +74,38 @@ export function AlertsPage() {
         // Load tickets for each alert to check if ticket exists
         const alertsWithMachines = await Promise.all(
           data.map(async (alert: any) => {
-            // Check if there's an open ticket for this alert's machine
-            const { data: ticketData } = await supabase
+            let ticketData: MaintenanceTicket | null = null
+
+            const { data: ticketFromAlert } = await supabase
               .from('maintenance_tickets')
               .select('*')
-              .eq('machine_id', alert.machine_id)
+              .eq('alert_id', alert.id)
               .in('status', ['open', 'in_progress'])
               .order('created_at', { ascending: false })
               .limit(1)
-              .single()
+              .maybeSingle()
+
+            if (ticketFromAlert) {
+              ticketData = ticketFromAlert as MaintenanceTicket
+            } else {
+              const { data: ticketFromMachine } = await supabase
+                .from('maintenance_tickets')
+                .select('*')
+                .eq('machine_id', alert.machine_id)
+                .in('status', ['open', 'in_progress'])
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+
+              if (ticketFromMachine) {
+                ticketData = ticketFromMachine as MaintenanceTicket
+              }
+            }
 
             return {
               ...alert,
               machine: alert.machines,
-              ticket: ticketData || null,
+              ticket: ticketData,
             }
           })
         )
@@ -200,6 +218,7 @@ export function AlertsPage() {
 
       const ticketData: any = {
         machine_id: selectedAlert.machine.id,
+        alert_id: selectedAlert.id,
         title: newTicket.title,
         description: newTicket.description,
         status: 'open',

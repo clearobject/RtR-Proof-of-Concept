@@ -59,6 +59,7 @@ export interface MaintenanceTicket {
   id: string
   machine_id?: string
   asset_id?: string
+  alert_id?: string
   title: string
   description: string
   status: 'open' | 'in_progress' | 'resolved' | 'closed'
