@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 import { createClient } from '@/lib/supabase/server'
 import { SignOutButton } from '@/components/auth/sign-out-button'
 import { NavLink } from '@/components/dashboard/nav-link'
@@ -98,11 +100,18 @@ export default async function DashboardLayout({
     <div className="flex h-screen bg-rtr-cream">
       {/* Sidebar */}
       <aside className="w-72 bg-rtr-wine border-r border-rtr-wine-light flex flex-col flex-shrink-0">
-        <div className="p-6 border-b border-rtr-wine-light/20">
-          <h1 className="text-xl font-bold text-white">
+        <div className="p-6 border-b border-rtr-wine-light/20 flex flex-col items-center text-center space-y-3">
+          <Image
+            src="/images/rtr-logo.svg"
+            alt="Rent the Runway logo"
+            width={120}
+            height={160}
+            priority
+            className="w-28 h-auto"
+          />
+          <h1 className="text-xl font-semibold tracking-wide text-white">
             Rent the Runway
           </h1>
-          <p className="text-sm text-white/80 mt-1">Operations Portal</p>
         </div>
         <nav className="flex-1 p-4 space-y-1">
           {navItems.map((item) => (

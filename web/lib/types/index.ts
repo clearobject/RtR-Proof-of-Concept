@@ -20,6 +20,7 @@ export interface Facility {
 export interface Machine {
   id: string
   name: string
+  asset_alias?: string
   type: string // washer, dryer, dry_cleaner, etc.
   zone: string // Inbound, Tagging, Wet Cleaning, etc.
   facility_id: string
@@ -73,6 +74,7 @@ export interface MaintenanceTicket {
 
 export interface Asset {
   id: string
+  alias?: string
   name: string
   type: string
   manufacturer?: string

@@ -43,3 +43,14 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Syncing Asset Aliases to Supabase
+
+Use the helper script in `scripts/push-machine-aliases.js` to populate `assets.alias` and `machines.asset_alias` from `data/RtR Assets.csv` so the factory layout can reference live data.
+
+```bash
+cd web
+SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/push-machine-aliases.js
+```
+
+The script is idempotent and uses `alias`/`asset_alias` as the upsert keys. A Supabase service role key is required because it bypasses row-level security to insert or update the records in bulk.
