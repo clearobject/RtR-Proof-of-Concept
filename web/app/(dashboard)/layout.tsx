@@ -102,14 +102,17 @@ export default async function DashboardLayout({
       <aside className="w-72 bg-rtr-wine border-r border-rtr-wine-light flex flex-col flex-shrink-0">
         <div className="p-6 border-b border-rtr-wine-light/20 flex flex-col items-center text-center space-y-3">
           <Image
-            src="/images/rtr-logo.svg"
+            src="/images/rtr-logo.png"
             alt="Rent the Runway logo"
             width={120}
             height={160}
             priority
             className="w-28 h-auto"
           />
-          <h1 className="text-xl font-semibold tracking-wide text-white">
+          <h1
+            className="text-xl font-semibold tracking-wide text-white"
+            style={{ color: '#ffffff' }}
+          >
             Rent the Runway
           </h1>
         </div>

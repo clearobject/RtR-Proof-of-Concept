@@ -32,6 +32,7 @@ const executiveKpis = [
     helperText: 'Across 18 assets',
     icon: <AlertTriangle className="h-5 w-5" aria-hidden />,
     accent: 'wine' as const,
+    href: '/dashboard/alerts',
   },
   {
     label: 'Plant OEE',
@@ -59,19 +60,23 @@ export default function DashboardPage() {
           </p>
         </header>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {executiveKpis.map((kpi) => (
             <KpiCard key={kpi.label} {...kpi} />
           ))}
         </section>
 
-        <section className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <section className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <ThroughputChart />
+          <AlertsOverview />
+        </section>
+
+        <section className="mt-8">
           <FactoryMap />
-          <div className="flex flex-col gap-6">
-            <ThroughputChart />
-            <AlertsOverview />
-            <OeePanel />
-          </div>
+        </section>
+
+        <section className="mt-8">
+          <OeePanel />
         </section>
       </div>
     </div>

@@ -1,6 +1,7 @@
 'use client'
 
-import { ReactNode } from 'react'
+import Link from 'next/link'
+import type { ElementType, ReactNode } from 'react'
 import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils/cn'
@@ -17,6 +18,8 @@ interface KpiCardProps {
   helperText?: string
   icon?: ReactNode
   accent?: 'default' | 'wine' | 'blush' | 'success' | 'warning'
+  href?: string
+  onClick?: () => void
 }
 
 const trendIconMap: Record<TrendDirection, ReactNode> = {
@@ -32,6 +35,8 @@ export function KpiCard({
   helperText,
   icon,
   accent = 'default',
+  href,
+  onClick,
 }: KpiCardProps) {
   const accentClasses = {
     default: 'border-rtr-border',
@@ -49,50 +54,73 @@ export function KpiCard({
     warning: 'bg-rtr-warning/10 text-rtr-warning',
   }[accent]
 
-  return (
-    <Card
-      className={cn(
-        'flex flex-col gap-4 p-6 transition-shadow hover:shadow-[var(--shadow-rtr-elevated)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rtr-wine focus-visible:ring-offset-2',
-        accentClasses
-      )}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-rtr-slate uppercase tracking-wide">
-            {label}
-          </p>
-          <p className="mt-2 text-3xl font-semibold text-rtr-ink">{value}</p>
-        </div>
-        {icon && (
-          <span
-            className={cn(
-              'inline-flex h-11 w-11 items-center justify-center rounded-xl',
-              iconWrapperClasses
-            )}
-          >
-            {icon}
-          </span>
-        )}
-      </div>
+  const clickable = Boolean(href || onClick)
+  const WrapperComponent: ElementType = href ? Link : onClick ? 'button' : 'div'
+  const wrapperProps: Record<string, unknown> = {}
+  if (href) wrapperProps.href = href
+  if (onClick) {
+    wrapperProps.onClick = onClick
+    if (!href) {
+      wrapperProps.type = 'button'
+    }
+  }
 
-      <div className="flex items-center justify-between text-sm text-rtr-slate">
-        {trend ? (
-          <span
-            className={cn(
-              'inline-flex items-center gap-2 font-medium',
-              trend.direction === 'up' && 'text-rtr-success',
-              trend.direction === 'down' && 'text-rtr-danger'
-            )}
-          >
-            {trendIconMap[trend.direction]}
-            {trend.value}
-          </span>
-        ) : (
-          <span aria-hidden />
+  return (
+    <WrapperComponent
+      {...wrapperProps}
+      className={cn(
+        clickable && 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rtr-wine focus-visible:ring-offset-2',
+        'block'
+      )}
+      aria-label={clickable ? label : undefined}
+    >
+      <Card
+        className={cn(
+          'flex min-h-[120px] flex-col gap-3 rounded-xl border border-rtr-border bg-white p-4 sm:min-h-[120px] sm:p-5 transition-shadow',
+          clickable && 'cursor-pointer hover:shadow-[var(--shadow-rtr-elevated)]',
+          accentClasses
         )}
-        {helperText && <span className="text-right">{helperText}</span>}
-      </div>
-    </Card>
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rtr-slate">
+              {label}
+            </p>
+            <p className="mt-1 text-2xl font-semibold text-rtr-ink sm:text-3xl">
+              {value}
+            </p>
+          </div>
+          {icon && (
+            <span
+              className={cn(
+                'inline-flex h-10 w-10 items-center justify-center rounded-lg',
+                iconWrapperClasses
+              )}
+            >
+              {icon}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-rtr-slate sm:text-sm">
+          {trend ? (
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 font-medium',
+                trend.direction === 'up' && 'text-rtr-success',
+                trend.direction === 'down' && 'text-rtr-danger'
+              )}
+            >
+              {trendIconMap[trend.direction]}
+              {trend.value}
+            </span>
+          ) : (
+            <span aria-hidden />
+          )}
+          {helperText && <span className="text-right">{helperText}</span>}
+        </div>
+      </Card>
+    </WrapperComponent>
   )
 }
 
