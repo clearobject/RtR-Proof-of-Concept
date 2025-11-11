@@ -53,7 +53,7 @@ export function AlertsOverview() {
           />
         </div>
       </CardHeader>
-      <CardContent className="h-56 lg:h-52">
+      <CardContent className="h-[120px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={severityDistribution} barSize={28}>
             <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f3f4f6" />
