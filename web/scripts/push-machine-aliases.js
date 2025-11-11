@@ -2,11 +2,14 @@ const fs = require('fs')
 const path = require('path')
 const { createClient } = require('@supabase/supabase-js')
 
-const SUPABASE_URL = process.env.SUPABASE_URL
+// Support both direct env vars and Next.js-style prefixed vars
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables.')
+  console.error('Missing SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) or SUPABASE_SERVICE_ROLE_KEY environment variables.')
+  console.error('Found SUPABASE_URL:', SUPABASE_URL ? 'yes' : 'no')
+  console.error('Found SUPABASE_SERVICE_ROLE_KEY:', SUPABASE_SERVICE_ROLE_KEY ? 'yes' : 'no')
   process.exit(1)
 }
 
@@ -87,7 +90,8 @@ function deriveStatus(outOfService) {
 }
 
 function normalizeAsset(record) {
-  const alias = record.gitet
+  // CSV uses 'Asset' column, not 'gitet'
+  const alias = record.Asset || record.gitet
   if (!alias) {
     return null
   }
@@ -120,7 +124,8 @@ function normalizeAsset(record) {
 }
 
 function normalizeMachine(record) {
-  const alias = record.gitet
+  // CSV uses 'Asset' column, not 'gitet'
+  const alias = record.Asset || record.gitet
   if (!alias) {
     return null
   }
@@ -145,34 +150,126 @@ function normalizeMachine(record) {
   }
 }
 
-async function chunkedUpsert(table, rows, onConflict) {
-  const chunkSize = 200
-  for (let i = 0; i < rows.length; i += chunkSize) {
-    const chunk = rows.slice(i, i + chunkSize)
-    const { error } = await supabase.from(table).upsert(chunk, { onConflict })
-    if (error) {
-      throw error
+async function chunkedUpsert(table, rows, conflictColumn) {
+  const chunkSize = 100
+  
+  // Get all conflict values
+  const conflictValues = rows
+    .map(row => row[conflictColumn])
+    .filter(Boolean)
+  
+  if (conflictValues.length === 0) {
+    console.warn(`No valid ${conflictColumn} values found`)
+    return
+  }
+
+  // Batch fetch existing records
+  const { data: existingRecords, error: selectError } = await supabase
+    .from(table)
+    .select(`id, ${conflictColumn}`)
+    .in(conflictColumn, conflictValues)
+
+  if (selectError) {
+    throw selectError
+  }
+
+  const existingMap = new Map(
+    (existingRecords || []).map(record => [record[conflictColumn], record.id])
+  )
+
+  const toInsert = []
+  const toUpdate = []
+
+  for (const row of rows) {
+    const conflictValue = row[conflictColumn]
+    if (!conflictValue) {
+      continue
+    }
+
+    if (existingMap.has(conflictValue)) {
+      toUpdate.push({ ...row, id: existingMap.get(conflictValue) })
+    } else {
+      toInsert.push(row)
     }
   }
+
+  // Batch insert new records
+  if (toInsert.length > 0) {
+    for (let i = 0; i < toInsert.length; i += chunkSize) {
+      const chunk = toInsert.slice(i, i + chunkSize)
+      const { error: insertError } = await supabase.from(table).insert(chunk)
+      if (insertError) {
+        throw insertError
+      }
+      console.log(`Inserted ${Math.min(i + chunkSize, toInsert.length)}/${toInsert.length} new records`)
+    }
+  }
+
+  // Batch update existing records
+  if (toUpdate.length > 0) {
+    for (let i = 0; i < toUpdate.length; i += chunkSize) {
+      const chunk = toUpdate.slice(i, i + chunkSize)
+      // Update each record individually (Supabase doesn't support batch update by different IDs easily)
+      for (const row of chunk) {
+        const { id, ...updateData } = row
+        const { error: updateError } = await supabase
+          .from(table)
+          .update(updateData)
+          .eq('id', id)
+        if (updateError) {
+          throw updateError
+        }
+      }
+      console.log(`Updated ${Math.min(i + chunkSize, toUpdate.length)}/${toUpdate.length} existing records`)
+    }
+  }
+
+  console.log(`Upsert complete: ${toInsert.length} inserted, ${toUpdate.length} updated`)
 }
 
 async function main() {
+  console.log(`Reading CSV from: ${CSV_PATH}`)
   const records = parseCsv(CSV_PATH)
+  console.log(`Parsed ${records.length} CSV records`)
+
+  if (records.length === 0) {
+    console.error('No records found in CSV file')
+    process.exit(1)
+  }
+
+  // Debug: show first record structure
+  console.log('First record keys:', Object.keys(records[0]))
+  console.log('First record sample:', JSON.stringify(records[0], null, 2))
 
   const assetPayload = []
   const machinePayload = []
+  let skippedAssets = 0
+  let skippedMachines = 0
 
-  records.forEach((record) => {
+  records.forEach((record, idx) => {
     const asset = normalizeAsset(record)
     if (asset) {
       assetPayload.push(asset)
+    } else {
+      skippedAssets++
+      if (idx < 3) {
+        console.warn(`Skipped asset at row ${idx + 2}:`, {
+          Asset: record.Asset,
+          Organization: record.Organization,
+        })
+      }
     }
 
     const machine = normalizeMachine(record)
     if (machine) {
       machinePayload.push(machine)
+    } else {
+      skippedMachines++
     }
   })
+
+  console.log(`Generated ${assetPayload.length} assets (skipped ${skippedAssets})`)
+  console.log(`Generated ${machinePayload.length} machines (skipped ${skippedMachines})`)
 
   if (assetPayload.length === 0 || machinePayload.length === 0) {
     console.error('No asset or machine records were generated. Aborting.')

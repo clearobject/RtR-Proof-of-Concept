@@ -134,12 +134,12 @@ export default function FactoryOverview() {
                     )
                   }
                   onClick={() =>
-                    router.push(`/machines/${encodeURIComponent(machine.assetAlias)}`)
+                    router.push(`/asset/${encodeURIComponent(machine.assetAlias)}`)
                   }
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault()
-                      router.push(`/machines/${encodeURIComponent(machine.assetAlias)}`)
+                      router.push(`/asset/${encodeURIComponent(machine.assetAlias)}`)
                     }
                   }}
                   className="cursor-pointer transition-transform duration-150 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
