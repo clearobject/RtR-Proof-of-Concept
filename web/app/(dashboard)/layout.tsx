@@ -3,7 +3,6 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { SignOutButton } from '@/components/auth/sign-out-button'
 import { NavLink } from '@/components/dashboard/nav-link'
-import rtrLogo from '@/public/images/rtr-logo.png'
 
 // Force dynamic rendering to avoid build-time errors
 export const dynamic = 'force-dynamic'
@@ -103,7 +102,7 @@ export default async function DashboardLayout({
       <aside className="w-72 bg-rtr-wine border-r border-rtr-wine-light flex flex-col flex-shrink-0">
         <div className="p-6 border-b border-rtr-wine-light/20 flex flex-col items-center text-center space-y-3">
           <Image
-            src={rtrLogo}
+            src="/images/rtr-logo.svg"
             alt="Rent the Runway logo"
             width={120}
             height={160}
