@@ -76,14 +76,14 @@ export function KpiCard({
     >
       <Card
         className={cn(
-          'flex min-h-[120px] flex-col gap-3 rounded-xl border border-rtr-border bg-white p-4 sm:min-h-[120px] sm:p-5 transition-shadow',
+          'flex min-h-[104px] flex-col gap-3 rounded-xl border border-rtr-border bg-white p-4 sm:min-h-[104px] sm:p-5 transition-shadow',
           clickable && 'cursor-pointer hover:shadow-[var(--shadow-rtr-elevated)]',
           accentClasses
         )}
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rtr-slate">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rtr-slate whitespace-nowrap">
               {label}
             </p>
             <p className="mt-1 text-2xl font-semibold text-rtr-ink sm:text-3xl">

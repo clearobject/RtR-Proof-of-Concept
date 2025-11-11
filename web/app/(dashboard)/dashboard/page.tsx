@@ -32,7 +32,7 @@ const executiveKpis = [
     helperText: 'Across 18 assets',
     icon: <AlertTriangle className="h-5 w-5" aria-hidden />,
     accent: 'wine' as const,
-    href: '/dashboard/alerts',
+    href: '/alerts',
   },
   {
     label: 'Plant OEE',
@@ -66,7 +66,7 @@ export default function DashboardPage() {
           ))}
         </section>
 
-        <section className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <section className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
           <ThroughputChart />
           <AlertsOverview />
         </section>

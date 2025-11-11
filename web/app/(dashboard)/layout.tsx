@@ -107,6 +107,7 @@ export default async function DashboardLayout({
             width={120}
             height={160}
             priority
+            unoptimized
             className="w-28 h-auto"
           />
           <h1

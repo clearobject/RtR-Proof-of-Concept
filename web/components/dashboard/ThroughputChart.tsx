@@ -44,7 +44,7 @@ export function ThroughputChart() {
           </span>
         </div>
       </CardHeader>
-      <CardContent className="h-72">
+      <CardContent className="h-56 lg:h-52">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={mockThroughputData}>
             <defs>
