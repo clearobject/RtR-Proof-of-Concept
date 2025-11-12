@@ -106,8 +106,10 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
         const widthAttr = svg.getAttribute('width')
         const heightAttr = svg.getAttribute('height')
         if (widthAttr && heightAttr) {
-          const widthValue = parseFloat(widthAttr)
-          const heightValue = parseFloat(heightAttr)
+          const numericMatch = /^\d+/.exec(widthAttr)
+          const widthValue = numericMatch ? parseFloat(numericMatch[0]) : NaN
+          const heightMatch = /^\d+/.exec(heightAttr)
+          const heightValue = heightMatch ? parseFloat(heightMatch[0]) : NaN
           if (!Number.isNaN(widthValue) && !Number.isNaN(heightValue)) {
             svg.setAttribute('viewBox', `0 0 ${widthValue} ${heightValue}`)
           }
@@ -115,8 +117,11 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
       }
 
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+      svg.setAttribute('width', '100%')
+      svg.setAttribute('height', 'auto')
       svg.style.width = '100%'
       svg.style.height = 'auto'
+      svg.style.maxWidth = '100%'
       svg.style.display = 'block'
 
       const viewBox = svg.viewBox
