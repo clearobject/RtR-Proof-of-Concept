@@ -29,6 +29,46 @@ This project uses a custom design system inspired by Rent the Runway's brand ide
 - Component library (Button, Card, Badge)
 - Design principles and best practices
 
+## AI Insights Assistant
+
+The `/ai` route exposes a conversational assistant that summarizes plant performance, risks, and opportunities.
+
+1. Add your OpenAI credentials to the environment:
+
+   ```bash
+   # .env.local
+   OPENAI_API_KEY=sk-...
+   # Optional override – defaults to gpt-4o-mini if unset
+   OPENAI_MODEL=gpt-4o-mini
+   ```
+
+2. Restart the Next.js dev server after updating environment variables.
+
+3. In production, ensure the key is stored securely (e.g., Vercel env vars) and never exposed to the client. The API route proxies all requests and redacts error details from end users.
+
+4. Tailor the assistant by extending the system prompt in `app/api/ai/chat/route.ts` with plant-specific context or data source instructions.
+
+## Demo Seed Dataset
+
+Populate the Supabase database with a realistic production-style snapshot for demos:
+
+1. Run the Supabase containers (see `SUPABASE_SETUP.md` if needed).
+2. Reset and reseed using the bundled script:
+
+   ```bash
+   cd web
+   npm run db:reset
+   ```
+
+   The reset truncates high-churn tables and injects:
+
+   - 12 critical assets and 12 mapped machines with zones and coordinates.
+   - 14 days of hourly sensor telemetry per machine (temperature, vibration, power, humidity, flow rate).
+   - Layered alerts, downtime events, cost records, and maintenance tickets across multiple statuses.
+   - Preventive maintenance templates with scheduled, overdue, and completed tasks.
+
+3. Log into the dashboard to explore populated alerts, maintenance, and capex views aligned with the demo storyline.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

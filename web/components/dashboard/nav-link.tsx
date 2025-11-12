@@ -10,6 +10,7 @@ import {
   MessageSquare,
   AlertTriangle,
   Users,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
@@ -23,6 +24,7 @@ const iconMap: Record<string, LucideIcon> = {
   MessageSquare,
   AlertTriangle,
   Users,
+  Sparkles,
 }
 
 interface NavLinkProps {

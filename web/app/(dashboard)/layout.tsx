@@ -83,6 +83,7 @@ export default async function DashboardLayout({
 
 
   const navItems = [
+    { href: '/ai', label: 'Insight Assistant', iconName: 'Sparkles' },
     { href: '/dashboard', label: 'Digital Twin', iconName: 'LayoutDashboard' },
     { href: '/alerts', label: 'Alerts', iconName: 'AlertTriangle' },
     { href: '/maintenance', label: 'Maintenance', iconName: 'Wrench' },
@@ -91,9 +92,9 @@ export default async function DashboardLayout({
     { href: '/sentiment', label: 'Social Pulse', iconName: 'MessageSquare' },
   ]
 
-  // Add user management for admins and managers
+  // Add admin center for admins and managers
   if (userRole === 'admin' || userRole === 'manager') {
-    navItems.push({ href: '/users', label: 'User Management', iconName: 'Users' })
+    navItems.push({ href: '/admin', label: 'Admin', iconName: 'Users' })
   }
 
   return (

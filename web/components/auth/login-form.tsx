@@ -11,13 +11,15 @@ export default function LoginForm() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState<'signin' | 'reset' | 'magic' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [status, setStatus] = useState<string | null>(null)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    setLoading('signin')
     setError(null)
+    setStatus(null)
 
     // Check if Supabase is configured
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -25,7 +27,7 @@ export default function LoginForm() {
 
     if (!supabaseUrl || !supabaseAnonKey) {
       setError('Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.')
-      setLoading(false)
+      setLoading(null)
       return
     }
 
@@ -39,7 +41,6 @@ export default function LoginForm() {
 
       if (error) {
         setError(error.message)
-        setLoading(false)
       } else {
         router.push('/dashboard')
         router.refresh()
@@ -49,7 +50,96 @@ export default function LoginForm() {
         err.message ||
           'Configuration error: Please check Supabase environment variables'
       )
-      setLoading(false)
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError('Please enter your email address to receive reset instructions.')
+      setStatus(null)
+      return
+    }
+
+    setLoading('reset')
+    setError(null)
+    setStatus(null)
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      setError('Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.')
+      setLoading(null)
+      return
+    }
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.resetPasswordForEmail(email)
+
+      if (error) {
+        setError(error.message)
+      } else {
+        setStatus('Password reset email sent. Please check your inbox.')
+      }
+    } catch (err: any) {
+      setError(
+        err.message ||
+          'Configuration error: Please check Supabase environment variables'
+      )
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const handleMagicLink = async () => {
+    if (!email) {
+      setError('Please enter your email address to receive a magic link.')
+      setStatus(null)
+      return
+    }
+
+    setLoading('magic')
+    setError(null)
+    setStatus(null)
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      setError('Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.')
+      setLoading(null)
+      return
+    }
+
+    try {
+      const supabase = createClient()
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/dashboard`
+          : undefined
+
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: redirectTo,
+        },
+      })
+
+      if (error) {
+        setError(error.message)
+      } else {
+        setStatus('Magic link sent! Check your email to sign in.')
+      }
+    } catch (err: any) {
+      setError(
+        err.message ||
+          'Configuration error: Please check Supabase environment variables'
+      )
+    } finally {
+      setLoading(null)
     }
   }
 
@@ -68,6 +158,11 @@ export default function LoginForm() {
           {error && (
             <div className="rounded-md bg-red-50 p-4">
               <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+          {status && (
+            <div className="rounded-md bg-green-50 p-4">
+              <p className="text-sm text-green-800">{status}</p>
             </div>
           )}
           <div className="space-y-4">
@@ -100,8 +195,28 @@ export default function LoginForm() {
           </div>
 
           <div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign in'}
+            <Button type="submit" className="w-full" disabled={loading !== null}>
+              {loading === 'signin' ? 'Signing in...' : 'Sign in'}
+            </Button>
+          </div>
+          <div className="space-y-2 text-sm">
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full justify-center text-rtr-wine hover:text-rtr-wine-light"
+              disabled={loading !== null}
+              onClick={handleResetPassword}
+            >
+              {loading === 'reset' ? 'Sending reset email...' : 'Reset Password'}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full justify-center text-rtr-wine hover:text-rtr-wine-light"
+              disabled={loading !== null}
+              onClick={handleMagicLink}
+            >
+              {loading === 'magic' ? 'Sending magic link...' : 'Sign In with Magic Link'}
             </Button>
           </div>
         </form>

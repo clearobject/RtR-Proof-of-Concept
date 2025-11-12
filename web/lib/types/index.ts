@@ -148,4 +148,35 @@ export interface UserProfile extends User {
   updated_at: string
 }
 
+export interface JoinLink {
+  id: string
+  token: string
+  name?: string | null
+  description?: string | null
+  created_by: string
+  expires_at?: string | null
+  max_requests?: number | null
+  current_requests: number
+  status: 'active' | 'revoked'
+  created_at: string
+  updated_at: string
+}
+
+export interface AccessRequest {
+  id: string
+  join_link_id?: string | null
+  join_token: string
+  email: string
+  full_name?: string | null
+  notes?: string | null
+  status: 'pending' | 'approved' | 'denied'
+  resolution_notes?: string | null
+  resolved_at?: string | null
+  resolved_by?: string | null
+  invite_token_id?: string | null
+  invite_token?: string | null
+  created_at: string
+  updated_at: string
+}
+
 
