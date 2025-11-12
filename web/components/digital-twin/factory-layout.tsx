@@ -77,9 +77,13 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
       try {
         const response = await fetch(SVG_PATH)
         if (!response.ok) throw new Error(`Failed to load SVG: ${response.status}`)
-        const text = await response.text()
+        const raw = await response.text()
+        const sanitized = raw.replace(/<svg([\s\S]*?)>/, (match, attrs) => {
+          const withoutDimensions = attrs.replace(/\s(width|height)="[^"]*"/g, '')
+          return `<svg${withoutDimensions}>`
+        })
         if (isMounted) {
-          setSvgMarkup(text)
+          setSvgMarkup(sanitized)
         }
       } catch (error) {
         console.error('[FactoryLayout] Unable to fetch SVG layout', error)
@@ -169,6 +173,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
     const cleanupInteractions = () => {
       interactionCleanups.current.forEach((cleanup) => cleanup())
       interactionCleanups.current = []
+      setTooltip(null)
     }
 
     const applyInteractivity = () => {
@@ -220,6 +225,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
         node.setAttribute('stroke', statusColor)
         node.setAttribute('stroke-width', '3')
         node.style.cursor = 'pointer'
+        node.style.pointerEvents = 'auto'
         node.setAttribute('tabindex', '0')
 
         const handleMouseEnter = () => {
@@ -300,7 +306,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
       <div className="relative">
         <div
           ref={containerRef}
-          className="relative max-w-full"
+          className="relative max-w-full overflow-hidden"
           dangerouslySetInnerHTML={svgMarkup ? { __html: svgMarkup } : undefined}
         />
         {tooltip && (
