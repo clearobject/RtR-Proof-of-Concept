@@ -19,13 +19,23 @@ interface SvgMeta {
 
 const SVG_PATH = '/images/EWR-Factory-Floor-Layout.svg'
 
-const STATUS_COLORS: Record<Machine['status'] | 'unknown', string> = {
+export const STATUS_COLORS: Record<Machine['status'] | 'unknown', string> = {
   operational: '#10b981',
   warning: '#f97316',
   critical: '#ef4444',
   maintenance: '#fbbf24',
   offline: '#9ca3af',
   unknown: '#6b7280',
+}
+
+const hexToRgba = (hex: string, alpha: number) => {
+  const sanitized = hex.replace('#', '')
+  const bigint = parseInt(sanitized, 16)
+  const r = (bigint >> 16) & 255
+  const g = (bigint >> 8) & 255
+  const b = bigint & 255
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 interface FactoryLayoutProps {
@@ -73,6 +83,23 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
     const evaluate = () => {
       const svg = container.querySelector('svg')
       if (!svg) return
+
+      if (!svg.getAttribute('viewBox')) {
+        const widthAttr = svg.getAttribute('width')
+        const heightAttr = svg.getAttribute('height')
+        if (widthAttr && heightAttr) {
+          const widthValue = parseFloat(widthAttr)
+          const heightValue = parseFloat(heightAttr)
+          if (!Number.isNaN(widthValue) && !Number.isNaN(heightValue)) {
+            svg.setAttribute('viewBox', `0 0 ${widthValue} ${heightValue}`)
+          }
+        }
+      }
+
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+      svg.style.width = '100%'
+      svg.style.height = 'auto'
+      svg.style.display = 'block'
 
       const viewBox = svg.viewBox
       const width = viewBox?.baseVal?.width || svg.getBoundingClientRect().width || 1
@@ -126,8 +153,10 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
 
         if (!machine) return null
 
-        const left = (layout.cx / svgMeta.width) * 100
-        const top = (layout.cy / svgMeta.height) * 100
+        const left = (layout.bbox.x / svgMeta.width) * 100
+        const top = (layout.bbox.y / svgMeta.height) * 100
+        const width = (layout.bbox.width / svgMeta.width) * 100
+        const height = (layout.bbox.height / svgMeta.height) * 100
 
         return {
           layout,
@@ -135,22 +164,24 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
           style: {
             left: `${left}%`,
             top: `${top}%`,
+            width: `${width}%`,
+            height: `${height}%`,
           },
         }
       })
       .filter(Boolean) as {
       layout: LayoutMachine
       machine: Machine
-      style: { left: string; top: string }
+      style: { left: string; top: string; width: string; height: string }
     }[]
   }, [layoutMachines, machineLookup, svgMeta])
 
   return (
     <div className="relative w-full rounded-xl border border-rtr-border bg-white">
-      <div className="relative overflow-hidden">
+      <div className="relative">
         <div
           ref={containerRef}
-          className="relative"
+          className="relative max-w-full"
           dangerouslySetInnerHTML={svgMarkup ? { __html: svgMarkup } : undefined}
         />
 
@@ -159,16 +190,16 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
             {overlays.map(({ layout, machine, style }) => {
               const statusColor = STATUS_COLORS[machine.status] ?? STATUS_COLORS.unknown
               const isHovered = hoveredId === layout.id
+              const backgroundColor = hexToRgba(statusColor, isHovered ? 0.4 : 0.22)
+              const borderColor = hexToRgba(statusColor, 0.7)
               return (
                 <div
                   key={layout.id}
                   style={style}
-                  className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2"
+                  className="pointer-events-none absolute"
                 >
                   <button
-                    className={`pointer-events-auto rounded-full border border-white p-[6px] shadow-md transition ${
-                      isHovered ? 'scale-110' : 'scale-100'
-                    }`}
+                    className="pointer-events-auto h-full w-full rounded-md border text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rtr-wine focus-visible:ring-offset-1"
                     onClick={() => {
                       onMachineClick?.(machine)
                       router.push(`/machines/${machine.id}`)
@@ -176,15 +207,17 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
                     onMouseEnter={() => setHoveredId(layout.id)}
                     onMouseLeave={() => setHoveredId(null)}
                     aria-label={`${machine.name} status ${machine.status}`}
+                    style={{
+                      backgroundColor,
+                      borderColor,
+                      boxShadow: isHovered ? `0 8px 16px ${hexToRgba(statusColor, 0.25)}` : undefined,
+                    }}
                   >
-                    <span
-                      className="block h-3 w-3 rounded-full"
-                      style={{ backgroundColor: statusColor }}
-                    />
+                    <span className="sr-only">{machine.name}</span>
                   </button>
 
                   {isHovered && (
-                    <div className="pointer-events-none absolute left-4 top-4 w-48 rounded-lg border border-rtr-border bg-white p-3 text-xs text-rtr-ink shadow-lg">
+                    <div className="pointer-events-none absolute left-1/2 top-0 z-10 w-56 -translate-x-1/2 -translate-y-full rounded-lg border border-rtr-border bg-white p-3 text-xs text-rtr-ink shadow-lg">
                       <p className="font-medium text-rtr-ink">{machine.name}</p>
                       <p className="mt-1 text-rtr-slate">
                         Status:{' '}
