@@ -59,6 +59,7 @@ interface FactoryLayoutProps {
 export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange }: FactoryLayoutProps) {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
+  const svgInitializedRef = useRef(false)
   const [svgMarkup, setSvgMarkup] = useState<string | null>(null)
   const [layoutMachines, setLayoutMachines] = useState<LayoutMachine[]>([])
   const [svgMeta, setSvgMeta] = useState<SvgMeta | null>(null)
@@ -99,9 +100,13 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
   }, [])
 
   useEffect(() => {
-    if (!svgMarkup) return
+    if (!svgMarkup || svgInitializedRef.current) return
     const container = containerRef.current
     if (!container) return
+
+    // Set innerHTML only once
+    container.innerHTML = svgMarkup
+    svgInitializedRef.current = true
 
     const evaluate = () => {
       const svg = container.querySelector('svg')
@@ -123,7 +128,6 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
 
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
       svg.setAttribute('width', '100%')
-      svg.setAttribute('height', 'auto')
       svg.style.width = '100%'
       svg.style.height = 'auto'
       svg.style.maxWidth = '100%'
@@ -157,7 +161,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
     const frame = requestAnimationFrame(evaluate)
 
     return () => cancelAnimationFrame(frame)
-  }, [svgMarkup])
+  }, [svgMarkup, onLayoutMachinesChange])
 
   const machineLookup = useMemo(() => {
     const map = new Map<string, MachineWithAlert>()
@@ -189,6 +193,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
 
       cleanupInteractions()
 
+      // First pass: Apply colors to all nodes
       layoutMachines.forEach((layout) => {
         const selector = `#${cssEscape(layout.id)}`
         const node = svg.querySelector<SVGGraphicsElement>(selector)
@@ -199,91 +204,122 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
           machineLookup.get(layout.id.replace(/_/g, '-')) ||
           machineLookup.get(layout.id.replace(/^EWR\./, ''))
 
-        const originalFillAttr = node.getAttribute('data-original-fill')
-        const originalStrokeAttr = node.getAttribute('data-original-stroke')
-        if (!originalFillAttr) {
-          node.setAttribute('data-original-fill', node.getAttribute('fill') ?? '')
-        }
-        if (!originalStrokeAttr) {
-          node.setAttribute('data-original-stroke', node.getAttribute('stroke') ?? '')
-        }
-
-        const restoreNode = () => {
-          const machine = resolveMachine()
-          const statusColor = STATUS_COLORS[machine?.status ?? 'unknown'] ?? STATUS_COLORS.unknown
-          node.setAttribute('fill', hexToRgba(statusColor, 0.4))
+        const machine = resolveMachine()
+        if (machine) {
+          const statusColor = STATUS_COLORS[machine.status ?? 'unknown'] ?? STATUS_COLORS.unknown
+          node.setAttribute('fill', hexToRgba(statusColor, 0.32))
           node.setAttribute('stroke', statusColor)
           node.setAttribute('stroke-width', '3')
-          return { machine, statusColor }
         }
+      })
 
-        const { machine } = restoreNode()
+      // Second pass: Attach event listeners
+      layoutMachines.forEach((layout) => {
+        const selector = `#${cssEscape(layout.id)}`
+        const node = svg.querySelector<SVGGraphicsElement>(selector)
+        if (!node) return
 
+        const resolveMachine = () =>
+          machineLookup.get(layout.id) ||
+          machineLookup.get(layout.id.replace(/_/g, '-')) ||
+          machineLookup.get(layout.id.replace(/^EWR\./, ''))
+
+        const machine = resolveMachine()
         if (!machine) {
-          const originalFill = node.getAttribute('data-original-fill')
-          const originalStroke = node.getAttribute('data-original-stroke')
-          if (originalFill !== null) {
-            if (originalFill === '') node.removeAttribute('fill')
-            else node.setAttribute('fill', originalFill)
-          }
-          if (originalStroke !== null) {
-            if (originalStroke === '') node.removeAttribute('stroke')
-            else node.setAttribute('stroke', originalStroke)
-          }
-          node.removeAttribute('stroke-width')
           node.style.cursor = ''
           node.removeAttribute('tabindex')
           node.style.pointerEvents = ''
           return
         }
 
+        const statusColor = STATUS_COLORS[machine.status ?? 'unknown'] ?? STATUS_COLORS.unknown
+
         node.style.cursor = 'pointer'
         node.style.pointerEvents = 'auto'
         node.setAttribute('tabindex', '0')
 
-        const handleMouseEnter = () => {
+        const restoreNodeColors = () => {
+          node.setAttribute('fill', hexToRgba(statusColor, 0.32))
+          node.setAttribute('stroke', statusColor)
+          node.setAttribute('stroke-width', '3')
+        }
+
+        const handleMouseEnter = (event: MouseEvent) => {
+          // Cancel any pending hide timeout immediately
           if (tooltipHideTimeout.current) {
             clearTimeout(tooltipHideTimeout.current)
             tooltipHideTimeout.current = null
           }
 
-          const { machine: latestMachine, statusColor } = restoreNode()
-          if (!latestMachine) return
-
           const svgRect = container.getBoundingClientRect()
           const nodeRect = node.getBoundingClientRect()
-          const x = nodeRect.left - svgRect.left + nodeRect.width / 2
-          const y = nodeRect.top - svgRect.top - 8
+          
+          // Position tooltip at center of box (or mouse position if within bounds)
+          const mouseX = event.clientX - svgRect.left
+          const mouseY = event.clientY - svgRect.top
+          const nodeLeft = nodeRect.left - svgRect.left
+          const nodeTop = nodeRect.top - svgRect.top
+          const centerX = nodeLeft + nodeRect.width / 2
+          const centerY = nodeTop + nodeRect.height / 2
+          
+          // Use mouse position if it's within the node, otherwise use center
+          const isMouseInNode = 
+            mouseX >= nodeLeft && 
+            mouseX <= nodeLeft + nodeRect.width &&
+            mouseY >= nodeTop && 
+            mouseY <= nodeTop + nodeRect.height
+          
+          const x = isMouseInNode ? mouseX : centerX
+          const y = isMouseInNode ? mouseY : centerY
 
+          // Only modify the hovered node
           node.setAttribute('stroke-width', '4')
-          node.setAttribute('fill', hexToRgba(statusColor, 0.45))
+          node.setAttribute('fill', hexToRgba(statusColor, 0.5))
 
           setTooltip({
-            machine: latestMachine,
+            machine,
             x,
             y,
             color: statusColor,
           })
         }
 
-        const handleMouseLeave = () => {
-          const { machine: latestMachine } = restoreNode()
+        const handleMouseLeave = (event: MouseEvent) => {
+          // Restore the hovered node's colors
+          restoreNodeColors()
+
+          // Check if we're moving to the tooltip by checking relatedTarget
+          const relatedTarget = event.relatedTarget as Element | null
+          if (relatedTarget) {
+            const tooltipElement = relatedTarget.closest('[data-tooltip]')
+            if (tooltipElement) {
+              // Moving to tooltip, don't hide - tooltip will handle its own mouseleave
+              return
+            }
+          }
+
+          // Clear any pending timeout
           if (tooltipHideTimeout.current) {
             clearTimeout(tooltipHideTimeout.current)
-          }
-          tooltipHideTimeout.current = setTimeout(() => {
-            setTooltip((current) =>
-              latestMachine && current?.machine.id !== latestMachine.id ? current : null
-            )
             tooltipHideTimeout.current = null
-          }, 120)
+          }
+
+          // Hide tooltip after a short delay to allow moving to tooltip
+          tooltipHideTimeout.current = setTimeout(() => {
+            setTooltip((current) => {
+              // Only hide if it's still for this machine
+              if (current && current.machine.id === machine.id) {
+                return null
+              }
+              return current
+            })
+            tooltipHideTimeout.current = null
+          }, 200)
         }
 
         const handleClick = () => {
-          const targetMachine = resolveMachine()
-          if (!targetMachine) return
-          onMachineClick?.(targetMachine)
-          router.push(`/machines/${targetMachine.id}`)
+          onMachineClick?.(machine)
+          router.push(`/machines/${machine.id}`)
         }
 
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -307,20 +343,8 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
           node.removeEventListener('blur', handleMouseLeave)
           node.removeEventListener('click', handleClick)
           node.removeEventListener('keydown', handleKeyDown)
-          restoreNode()
-          const originalFill = node.getAttribute('data-original-fill')
-          const originalStroke = node.getAttribute('data-original-stroke')
-          if (originalFill !== null) {
-            if (originalFill === '') node.removeAttribute('fill')
-            else node.setAttribute('fill', originalFill)
-          }
-          if (originalStroke !== null) {
-            if (originalStroke === '') node.removeAttribute('stroke')
-            else node.setAttribute('stroke', originalStroke)
-          }
-          node.removeAttribute('stroke-width')
-          node.style.cursor = ''
-          node.removeAttribute('tabindex')
+          // Restore colors on cleanup
+          restoreNodeColors()
         })
       })
     }
@@ -330,7 +354,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
     return () => {
       cleanupInteractions()
     }
-  }, [layoutMachines, machineLookup, onMachineClick, router, svgMarkup])
+  }, [layoutMachines, machineLookup, onMachineClick, router])
 
   return (
     <div className="relative w-full rounded-xl border border-rtr-border bg-white">
@@ -338,23 +362,30 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
         <div
           ref={containerRef}
           className="relative max-w-full overflow-hidden"
-          dangerouslySetInnerHTML={svgMarkup ? { __html: svgMarkup } : undefined}
         />
         {tooltip && (
           <div
-            className="absolute z-10 w-56 -translate-x-1/2 -translate-y-3 rounded-lg border border-rtr-border bg-white p-3 text-xs text-rtr-ink shadow-lg"
+            data-tooltip
+            className="absolute z-10 w-56 -translate-x-full rounded-lg border border-rtr-border bg-white p-3 text-xs text-rtr-ink shadow-lg pointer-events-auto"
             style={{
               left: `${tooltip.x}px`,
               top: `${Math.max(tooltip.y, 16)}px`,
+              opacity: 0.9,
             }}
             onMouseEnter={() => {
+              // Cancel any pending hide timeout
               if (tooltipHideTimeout.current) {
                 clearTimeout(tooltipHideTimeout.current)
                 tooltipHideTimeout.current = null
               }
             }}
             onMouseLeave={() => {
+              // Hide tooltip when leaving it
+              if (tooltipHideTimeout.current) {
+                clearTimeout(tooltipHideTimeout.current)
+              }
               setTooltip(null)
+              tooltipHideTimeout.current = null
             }}
           >
             <p className="font-medium text-rtr-ink">{tooltip.machine.name}</p>
