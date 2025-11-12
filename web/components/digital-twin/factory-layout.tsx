@@ -208,16 +208,16 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
           node.setAttribute('data-original-stroke', node.getAttribute('stroke') ?? '')
         }
 
-        const applyBaseState = () => {
+        const restoreNode = () => {
           const machine = resolveMachine()
           const statusColor = STATUS_COLORS[machine?.status ?? 'unknown'] ?? STATUS_COLORS.unknown
-          node.setAttribute('fill', hexToRgba(statusColor, 0.32))
+          node.setAttribute('fill', hexToRgba(statusColor, 0.4))
           node.setAttribute('stroke', statusColor)
           node.setAttribute('stroke-width', '3')
           return { machine, statusColor }
         }
 
-        const { machine } = applyBaseState()
+        const { machine } = restoreNode()
 
         if (!machine) {
           const originalFill = node.getAttribute('data-original-fill')
@@ -247,7 +247,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
             tooltipHideTimeout.current = null
           }
 
-          const { machine: latestMachine, statusColor } = applyBaseState()
+          const { machine: latestMachine, statusColor } = restoreNode()
           if (!latestMachine) return
 
           const svgRect = container.getBoundingClientRect()
@@ -267,7 +267,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
         }
 
         const handleMouseLeave = () => {
-          const { machine: latestMachine } = applyBaseState()
+          const { machine: latestMachine } = restoreNode()
           if (tooltipHideTimeout.current) {
             clearTimeout(tooltipHideTimeout.current)
           }
@@ -307,7 +307,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
           node.removeEventListener('blur', handleMouseLeave)
           node.removeEventListener('click', handleClick)
           node.removeEventListener('keydown', handleKeyDown)
-          applyBaseState()
+          restoreNode()
           const originalFill = node.getAttribute('data-original-fill')
           const originalStroke = node.getAttribute('data-original-stroke')
           if (originalFill !== null) {
