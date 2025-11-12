@@ -103,7 +103,7 @@ export default async function DashboardLayout({
       <aside className="w-72 bg-rtr-wine border-r border-rtr-wine-light flex flex-col flex-shrink-0">
         <div className="p-6 border-b border-rtr-wine-light/20 flex flex-col items-center text-center space-y-3">
           <Image
-            src="/images/rtr-logo.svg"
+            src="/images/rtr-logo.png"
             alt="Rent the Runway logo"
             width={120}
             height={160}

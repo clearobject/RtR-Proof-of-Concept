@@ -15,3 +15,14 @@ Tech stack (prototype):
 - Cursor AI for code generation and assisted development
 
 See `docs/requirements-overview.md` for detailed functional requirements.
+
+## Admin & Access Management
+
+The prototype now includes an `Admin` area (available to managers and admins) that supports:
+
+- Creating single-use invites or QR codes to onboard teammates.
+- Generating shareable join links so partners can request access without an account.
+- Reviewing, approving, or denying incoming access requests with automatic invite generation.
+- Removing existing users when access is no longer required.
+
+Public join links surface a lightweight request form at `/join/[token]`, ensuring that new users can be reviewed before they receive an invite.

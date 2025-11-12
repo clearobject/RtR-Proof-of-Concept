@@ -300,3 +300,4 @@ GRANT EXECUTE ON FUNCTION public.get_join_link_by_token(TEXT) TO anon, authentic
 GRANT EXECUTE ON FUNCTION public.create_access_request(TEXT, TEXT, TEXT, TEXT) TO anon, authenticated;
 
 
+
