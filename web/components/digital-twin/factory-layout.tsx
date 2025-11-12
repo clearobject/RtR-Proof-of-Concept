@@ -317,6 +317,51 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
           }, 200)
         }
 
+        const handleFocus = () => {
+          // Cancel any pending hide timeout immediately
+          if (tooltipHideTimeout.current) {
+            clearTimeout(tooltipHideTimeout.current)
+            tooltipHideTimeout.current = null
+          }
+
+          const svgRect = container.getBoundingClientRect()
+          const nodeRect = node.getBoundingClientRect()
+          const nodeLeft = nodeRect.left - svgRect.left
+          const nodeTop = nodeRect.top - svgRect.top
+          const centerX = nodeLeft + nodeRect.width / 2
+          const centerY = nodeTop + nodeRect.height / 2
+
+          // Only modify the hovered node
+          node.setAttribute('stroke-width', '4')
+          node.setAttribute('fill', hexToRgba(statusColor, 0.5))
+
+          setTooltip({
+            machine,
+            x: centerX,
+            y: centerY,
+            color: statusColor,
+          })
+        }
+
+        const handleBlur = () => {
+          // Restore the hovered node's colors
+          restoreNodeColors()
+
+          // Clear any pending timeout
+          if (tooltipHideTimeout.current) {
+            clearTimeout(tooltipHideTimeout.current)
+            tooltipHideTimeout.current = null
+          }
+
+          // Hide tooltip immediately on blur
+          setTooltip((current) => {
+            if (current && current.machine.id === machine.id) {
+              return null
+            }
+            return current
+          })
+        }
+
         const handleClick = () => {
           onMachineClick?.(machine)
           router.push(`/machines/${machine.id}`)
@@ -331,16 +376,16 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
 
         node.addEventListener('mouseenter', handleMouseEnter)
         node.addEventListener('mouseleave', handleMouseLeave)
-        node.addEventListener('focus', handleMouseEnter)
-        node.addEventListener('blur', handleMouseLeave)
+        node.addEventListener('focus', handleFocus)
+        node.addEventListener('blur', handleBlur)
         node.addEventListener('click', handleClick)
         node.addEventListener('keydown', handleKeyDown)
 
         interactionCleanups.current.push(() => {
           node.removeEventListener('mouseenter', handleMouseEnter)
           node.removeEventListener('mouseleave', handleMouseLeave)
-          node.removeEventListener('focus', handleMouseEnter)
-          node.removeEventListener('blur', handleMouseLeave)
+          node.removeEventListener('focus', handleFocus)
+          node.removeEventListener('blur', handleBlur)
           node.removeEventListener('click', handleClick)
           node.removeEventListener('keydown', handleKeyDown)
           // Restore colors on cleanup
