@@ -46,13 +46,13 @@ const cssEscape = (value: string) => {
   return value.replace(/([^\w-])/g, '\\$1')
 }
 
-interface MachineWithAlert extends Machine {
+export interface MachineWithAlert extends Machine {
   alertSeverity?: string | null
 }
 
 interface FactoryLayoutProps {
   machines: MachineWithAlert[]
-  onMachineClick?: (machine: Machine) => void
+  onMachineClick?: (machine: MachineWithAlert) => void
   onLayoutMachinesChange?: (machines: LayoutMachine[], meta: SvgMeta) => void
 }
 
@@ -63,7 +63,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
   const [layoutMachines, setLayoutMachines] = useState<LayoutMachine[]>([])
   const [svgMeta, setSvgMeta] = useState<SvgMeta | null>(null)
   const [tooltip, setTooltip] = useState<{
-    machine: Machine
+    machine: MachineWithAlert
     x: number
     y: number
     color: string
