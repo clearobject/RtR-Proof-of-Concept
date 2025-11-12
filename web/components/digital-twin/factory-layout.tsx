@@ -69,6 +69,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
     color: string
   } | null>(null)
   const interactionCleanups = useRef<(() => void)[]>([])
+  const tooltipHideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -174,6 +175,10 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
       interactionCleanups.current.forEach((cleanup) => cleanup())
       interactionCleanups.current = []
       setTooltip(null)
+      if (tooltipHideTimeout.current) {
+        clearTimeout(tooltipHideTimeout.current)
+        tooltipHideTimeout.current = null
+      }
     }
 
     const applyInteractivity = () => {
@@ -189,7 +194,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
         const node = svg.querySelector<SVGGraphicsElement>(selector)
         if (!node) return
 
-        const machine =
+        const resolveMachine = () =>
           machineLookup.get(layout.id) ||
           machineLookup.get(layout.id.replace(/_/g, '-')) ||
           machineLookup.get(layout.id.replace(/^EWR\./, ''))
@@ -202,6 +207,17 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
         if (!originalStrokeAttr) {
           node.setAttribute('data-original-stroke', node.getAttribute('stroke') ?? '')
         }
+
+        const applyBaseState = () => {
+          const machine = resolveMachine()
+          const statusColor = STATUS_COLORS[machine?.status ?? 'unknown'] ?? STATUS_COLORS.unknown
+          node.setAttribute('fill', hexToRgba(statusColor, 0.32))
+          node.setAttribute('stroke', statusColor)
+          node.setAttribute('stroke-width', '3')
+          return { machine, statusColor }
+        }
+
+        const { machine } = applyBaseState()
 
         if (!machine) {
           const originalFill = node.getAttribute('data-original-fill')
@@ -217,18 +233,23 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
           node.removeAttribute('stroke-width')
           node.style.cursor = ''
           node.removeAttribute('tabindex')
+          node.style.pointerEvents = ''
           return
         }
 
-        const statusColor = STATUS_COLORS[machine.status] ?? STATUS_COLORS.unknown
-        node.setAttribute('fill', hexToRgba(statusColor, 0.32))
-        node.setAttribute('stroke', statusColor)
-        node.setAttribute('stroke-width', '3')
         node.style.cursor = 'pointer'
         node.style.pointerEvents = 'auto'
         node.setAttribute('tabindex', '0')
 
         const handleMouseEnter = () => {
+          if (tooltipHideTimeout.current) {
+            clearTimeout(tooltipHideTimeout.current)
+            tooltipHideTimeout.current = null
+          }
+
+          const { machine: latestMachine, statusColor } = applyBaseState()
+          if (!latestMachine) return
+
           const svgRect = container.getBoundingClientRect()
           const nodeRect = node.getBoundingClientRect()
           const x = nodeRect.left - svgRect.left + nodeRect.width / 2
@@ -238,7 +259,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
           node.setAttribute('fill', hexToRgba(statusColor, 0.45))
 
           setTooltip({
-            machine,
+            machine: latestMachine,
             x,
             y,
             color: statusColor,
@@ -246,14 +267,23 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
         }
 
         const handleMouseLeave = () => {
-          node.setAttribute('stroke-width', '3')
-          node.setAttribute('fill', hexToRgba(statusColor, 0.32))
-          setTooltip(null)
+          const { machine: latestMachine } = applyBaseState()
+          if (tooltipHideTimeout.current) {
+            clearTimeout(tooltipHideTimeout.current)
+          }
+          tooltipHideTimeout.current = setTimeout(() => {
+            setTooltip((current) =>
+              latestMachine && current?.machine.id !== latestMachine.id ? current : null
+            )
+            tooltipHideTimeout.current = null
+          }, 120)
         }
 
         const handleClick = () => {
-          onMachineClick?.(machine)
-          router.push(`/machines/${machine.id}`)
+          const targetMachine = resolveMachine()
+          if (!targetMachine) return
+          onMachineClick?.(targetMachine)
+          router.push(`/machines/${targetMachine.id}`)
         }
 
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -277,6 +307,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
           node.removeEventListener('blur', handleMouseLeave)
           node.removeEventListener('click', handleClick)
           node.removeEventListener('keydown', handleKeyDown)
+          applyBaseState()
           const originalFill = node.getAttribute('data-original-fill')
           const originalStroke = node.getAttribute('data-original-stroke')
           if (originalFill !== null) {
@@ -311,10 +342,19 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
         />
         {tooltip && (
           <div
-            className="pointer-events-none absolute z-10 w-56 -translate-x-1/2 -translate-y-3 rounded-lg border border-rtr-border bg-white p-3 text-xs text-rtr-ink shadow-lg"
+            className="absolute z-10 w-56 -translate-x-1/2 -translate-y-3 rounded-lg border border-rtr-border bg-white p-3 text-xs text-rtr-ink shadow-lg"
             style={{
               left: `${tooltip.x}px`,
               top: `${Math.max(tooltip.y, 16)}px`,
+            }}
+            onMouseEnter={() => {
+              if (tooltipHideTimeout.current) {
+                clearTimeout(tooltipHideTimeout.current)
+                tooltipHideTimeout.current = null
+              }
+            }}
+            onMouseLeave={() => {
+              setTooltip(null)
             }}
           >
             <p className="font-medium text-rtr-ink">{tooltip.machine.name}</p>
@@ -341,6 +381,13 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
                 </span>
               </p>
             )}
+            <button
+              type="button"
+              className="mt-3 w-full rounded-md bg-rtr-wine px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-rtr-wine/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rtr-wine/70"
+              onClick={() => router.push(`/machines/${tooltip.machine.id}`)}
+            >
+              View machine details
+            </button>
           </div>
         )}
       </div>
