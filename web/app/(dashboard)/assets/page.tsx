@@ -20,6 +20,7 @@ export default function AssetsPage() {
     status?: string
     criticality?: string
     facility_id?: string
+    type?: string
     search?: string
   }>({})
 
@@ -33,8 +34,18 @@ export default function AssetsPage() {
     zone: '',
     in_service_date: '',
     expected_life_years: '',
-    criticality: 'medium' as const,
-    status: 'active' as const,
+    criticality: 'Medium' as const,
+    status: 'Active' as const,
+  })
+  
+  const [stats, setStats] = useState({
+    active: 0,
+    maintenance: 0,
+    retired: 0,
+    warning: 0,
+    critical: 0,
+    offline: 0,
+    total: 0,
   })
 
   useEffect(() => {
@@ -59,15 +70,20 @@ export default function AssetsPage() {
       if (filter.facility_id) {
         assetsQuery = assetsQuery.eq('facility_id', filter.facility_id)
       }
+      if (filter.type) {
+        assetsQuery = assetsQuery.eq('type', filter.type)
+      }
       if (filter.search) {
         assetsQuery = assetsQuery.or(
           `name.ilike.%${filter.search}%,type.ilike.%${filter.search}%,manufacturer.ilike.%${filter.search}%,model.ilike.%${filter.search}%`
         )
       }
 
-      const [assetsResult, facilitiesResult] = await Promise.all([
+      // Load all assets for stats (without filters)
+      const [assetsResult, facilitiesResult, allAssetsResult] = await Promise.all([
         assetsQuery,
         supabase.from('facilities').select('*').order('name'),
+        supabase.from('assets').select('id, status, criticality').order('created_at', { ascending: false }),
       ])
 
       if (assetsResult.data) {
@@ -75,6 +91,20 @@ export default function AssetsPage() {
       }
       if (facilitiesResult.data) {
         setFacilities(facilitiesResult.data as Facility[])
+      }
+      
+      // Update stats with all assets (not just filtered)
+      if (allAssetsResult.data) {
+        const allAssets = allAssetsResult.data as Asset[]
+        setStats({
+          active: allAssets.filter((a) => a.status === 'Active').length,
+          maintenance: allAssets.filter((a) => a.status === 'Maintenance').length,
+          retired: allAssets.filter((a) => a.status === 'Retired').length,
+          warning: allAssets.filter((a) => a.status === 'Warning').length,
+          critical: allAssets.filter((a) => a.criticality === 'Critical').length,
+          offline: allAssets.filter((a) => a.status === 'Offline').length,
+          total: allAssets.length,
+        })
       }
     } catch (error) {
       console.error('Error loading data:', error)
@@ -109,8 +139,8 @@ export default function AssetsPage() {
           zone: '',
           in_service_date: '',
           expected_life_years: '',
-          criticality: 'medium',
-          status: 'active',
+          criticality: 'Medium',
+          status: 'Active',
         })
         loadData()
       } else {
@@ -166,8 +196,8 @@ export default function AssetsPage() {
         })
 
         // Set defaults
-        if (!asset.criticality) asset.criticality = 'medium'
-        if (!asset.status) asset.status = 'active'
+        if (!asset.criticality) asset.criticality = 'Medium'
+        if (!asset.status) asset.status = 'Active'
 
         assetsToInsert.push(asset)
       }
@@ -198,13 +228,7 @@ export default function AssetsPage() {
     )
   }
 
-  const stats = {
-    active: assets.filter((a) => a.status === 'active').length,
-    maintenance: assets.filter((a) => a.status === 'maintenance').length,
-    retired: assets.filter((a) => a.status === 'retired').length,
-    total: assets.length,
-    critical: assets.filter((a) => a.criticality === 'critical').length,
-  }
+  // Stats are now loaded from database in loadData()
 
   return (
     <div className="p-8">
@@ -232,7 +256,7 @@ export default function AssetsPage() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow p-4">
             <h3 className="text-sm font-medium text-gray-500 mb-1">Total Assets</h3>
             <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
@@ -242,18 +266,26 @@ export default function AssetsPage() {
             <p className="text-2xl font-bold text-green-600">{stats.active}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Warning</h3>
+            <p className="text-2xl font-bold text-orange-600">{stats.warning}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4">
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Critical</h3>
+            <p className="text-2xl font-bold text-red-600">{stats.critical}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4">
             <h3 className="text-sm font-medium text-gray-500 mb-1">Maintenance</h3>
             <p className="text-2xl font-bold text-yellow-600">
               {stats.maintenance}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Retired</h3>
-            <p className="text-2xl font-bold text-gray-600">{stats.retired}</p>
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Offline</h3>
+            <p className="text-2xl font-bold text-gray-600">{stats.offline}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Critical</h3>
-            <p className="text-2xl font-bold text-red-600">{stats.critical}</p>
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Retired</h3>
+            <p className="text-2xl font-bold text-gray-500">{stats.retired}</p>
           </div>
         </div>
 
@@ -430,10 +462,10 @@ export default function AssetsPage() {
                     }
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                   >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="critical">Critical</option>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
                   </select>
                 </div>
                 <div>
@@ -449,9 +481,9 @@ export default function AssetsPage() {
                     }
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                   >
-                    <option value="active">Active</option>
-                    <option value="maintenance">Maintenance</option>
-                    <option value="retired">Retired</option>
+                    <option value="Active">Active</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Retired">Retired</option>
                   </select>
                 </div>
               </div>
@@ -496,9 +528,12 @@ export default function AssetsPage() {
                 className="mt-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
               >
                 <option value="">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="retired">Retired</option>
+                <option value="Active">Active</option>
+                <option value="Warning">Warning</option>
+                <option value="Critical">Critical</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Offline">Offline</option>
+                <option value="Retired">Retired</option>
               </select>
             </div>
             <div>
@@ -514,10 +549,36 @@ export default function AssetsPage() {
                 className="mt-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
               >
                 <option value="">All Criticalities</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
+              </select>
+            </div>
+            <div>
+              <Label>Type</Label>
+              <select
+                value={filter.type || ''}
+                onChange={(e) =>
+                  setFilter({
+                    ...filter,
+                    type: e.target.value || undefined,
+                  })
+                }
+                className="mt-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option value="">All Types</option>
+                {Array.from(new Set(assets.map((a) => a.type).filter(Boolean))).map((type) => {
+                  // Format type: capitalize and replace underscores with spaces
+                  const formattedType = type
+                    .replace(/_/g, ' ')
+                    .replace(/\b\w/g, (char) => char.toUpperCase())
+                  return (
+                    <option key={type} value={type}>
+                      {formattedType}
+                    </option>
+                  )
+                })}
               </select>
             </div>
             <div>
@@ -540,7 +601,7 @@ export default function AssetsPage() {
                 ))}
               </select>
             </div>
-            {(filter.status || filter.criticality || filter.facility_id || filter.search) && (
+            {(filter.status || filter.criticality || filter.facility_id || filter.type || filter.search) && (
               <Button
                 variant="secondary"
                 onClick={() => setFilter({})}
@@ -605,7 +666,9 @@ export default function AssetsPage() {
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {asset.type}
+                            {asset.type
+                              ?.replace(/_/g, ' ')
+                              .replace(/\b\w/g, (char) => char.toUpperCase()) || '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {asset.manufacturer || '-'}
@@ -623,10 +686,18 @@ export default function AssetsPage() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
                               className={`px-2 py-1 rounded text-xs font-medium ${
-                                asset.status === 'active'
+                                asset.status === 'Active'
                                   ? 'bg-green-100 text-green-800'
-                                  : asset.status === 'maintenance'
+                                  : asset.status === 'Warning'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : asset.status === 'Critical'
+                                  ? 'bg-red-100 text-red-800'
+                                  : asset.status === 'Maintenance'
                                   ? 'bg-yellow-100 text-yellow-800'
+                                  : asset.status === 'Offline'
+                                  ? 'bg-gray-100 text-gray-800'
+                                  : asset.status === 'Retired'
+                                  ? 'bg-gray-200 text-gray-700'
                                   : 'bg-gray-100 text-gray-800'
                               }`}
                             >
@@ -636,11 +707,11 @@ export default function AssetsPage() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
                               className={`px-2 py-1 rounded text-xs font-medium ${
-                                asset.criticality === 'critical'
+                                asset.criticality === 'Critical'
                                   ? 'bg-red-100 text-red-800'
-                                  : asset.criticality === 'high'
+                                  : asset.criticality === 'High'
                                   ? 'bg-orange-100 text-orange-800'
-                                  : asset.criticality === 'medium'
+                                  : asset.criticality === 'Medium'
                                   ? 'bg-yellow-100 text-yellow-800'
                                   : 'bg-blue-100 text-blue-800'
                               }`}

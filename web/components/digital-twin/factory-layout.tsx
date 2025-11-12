@@ -20,11 +20,11 @@ interface SvgMeta {
 const SVG_PATH = '/images/EWR-Factory-Floor-Layout.svg'
 
 export const STATUS_COLORS: Record<Machine['status'] | 'unknown', string> = {
-  operational: '#10b981',
-  warning: '#f97316',
-  critical: '#ef4444',
-  maintenance: '#fbbf24',
-  offline: '#9ca3af',
+  Active: '#10b981',
+  Warning: '#f97316',
+  Critical: '#ef4444',
+  Maintenance: '#fbbf24',
+  Offline: '#9ca3af',
   unknown: '#6b7280',
 }
 
@@ -68,6 +68,8 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
     x: number
     y: number
     color: string
+    transformX?: string
+    transformY?: string
   } | null>(null)
   const interactionCleanups = useRef<(() => void)[]>([])
   const tooltipHideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -193,7 +195,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
 
       cleanupInteractions()
 
-      // First pass: Apply colors to all nodes
+      // First pass: Apply colors to all nodes and hide filtered-out machines
       layoutMachines.forEach((layout) => {
         const selector = `#${cssEscape(layout.id)}`
         const node = svg.querySelector<SVGGraphicsElement>(selector)
@@ -210,6 +212,12 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
           node.setAttribute('fill', hexToRgba(statusColor, 0.32))
           node.setAttribute('stroke', statusColor)
           node.setAttribute('stroke-width', '3')
+          node.style.opacity = '1'
+          node.style.visibility = 'visible'
+        } else {
+          // Hide machines that are not in the filtered list
+          node.style.opacity = '0.2'
+          node.style.visibility = 'visible'
         }
       })
 
@@ -228,7 +236,8 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
         if (!machine) {
           node.style.cursor = ''
           node.removeAttribute('tabindex')
-          node.style.pointerEvents = ''
+          node.style.pointerEvents = 'none'
+          node.style.opacity = '0.2'
           return
         }
 
@@ -254,11 +263,23 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
           const svgRect = container.getBoundingClientRect()
           const nodeRect = node.getBoundingClientRect()
           
+          // Get the parent container (the div with relative positioning that contains the tooltip)
+          const parentContainer = container.parentElement
+          if (!parentContainer) return
+          const parentRect = parentContainer.getBoundingClientRect()
+          
+          // Calculate SVG container bounds relative to parent (for constraint checking)
+          const svgLeftInParent = svgRect.left - parentRect.left
+          const svgTopInParent = svgRect.top - parentRect.top
+          const svgRightInParent = svgLeftInParent + svgRect.width
+          const svgBottomInParent = svgTopInParent + svgRect.height
+          
           // Position tooltip at center of box (or mouse position if within bounds)
-          const mouseX = event.clientX - svgRect.left
-          const mouseY = event.clientY - svgRect.top
-          const nodeLeft = nodeRect.left - svgRect.left
-          const nodeTop = nodeRect.top - svgRect.top
+          // Calculate relative to parent container (tooltip's positioning context)
+          const mouseX = event.clientX - parentRect.left
+          const mouseY = event.clientY - parentRect.top
+          const nodeLeft = nodeRect.left - parentRect.left
+          const nodeTop = nodeRect.top - parentRect.top
           const centerX = nodeLeft + nodeRect.width / 2
           const centerY = nodeTop + nodeRect.height / 2
           
@@ -269,8 +290,148 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
             mouseY >= nodeTop && 
             mouseY <= nodeTop + nodeRect.height
           
-          const x = isMouseInNode ? mouseX : centerX
-          const y = isMouseInNode ? mouseY : centerY
+          const anchorX = isMouseInNode ? mouseX : centerX
+          const anchorY = isMouseInNode ? mouseY : centerY
+
+          // Tooltip dimensions (approximate)
+          const tooltipWidth = 224 // w-56 = 14rem = 224px
+          const tooltipHeight = 200 // approximate height
+          const padding = 16 // minimum padding from container edge
+
+          // Check available space relative to SVG container bounds (the visible area)
+          // Constrain to SVG container, not the full parent div
+          const containerSpaceRight = svgRightInParent - anchorX - padding
+          const containerSpaceLeft = anchorX - svgLeftInParent - padding
+          const containerSpaceBottom = svgBottomInParent - anchorY - padding
+          const containerSpaceTop = anchorY - svgTopInParent - padding
+
+          // Determine best position: try each corner and pick the one that fits best
+          // Priority: top-right > top-left > bottom-right > bottom-left
+          let x = anchorX
+          let y = anchorY
+          let transformX = '-100%' // top-right: tooltip's right edge at anchor
+          let transformY = '0' // top-right: tooltip's top edge at anchor
+
+          // Check if top-right fits within container
+          if (containerSpaceRight >= tooltipWidth && containerSpaceTop >= tooltipHeight) {
+            // Top-right fits perfectly
+            transformX = '-100%'
+            transformY = '0'
+          }
+          // Check if top-left fits within container
+          else if (containerSpaceLeft >= tooltipWidth && containerSpaceTop >= tooltipHeight) {
+            // Top-left fits
+            transformX = '0'
+            transformY = '0'
+          }
+          // Check if bottom-right fits within container
+          else if (containerSpaceRight >= tooltipWidth && containerSpaceBottom >= tooltipHeight) {
+            // Bottom-right fits
+            transformX = '-100%'
+            transformY = '-100%'
+          }
+          // Check if bottom-left fits within container
+          else if (containerSpaceLeft >= tooltipWidth && containerSpaceBottom >= tooltipHeight) {
+            // Bottom-left fits
+            transformX = '0'
+            transformY = '-100%'
+          }
+          // None fit perfectly, choose the position with the most available space
+          else {
+            const positions = [
+              { name: 'top-right', transformX: '-100%', transformY: '0', score: Math.min(containerSpaceRight, containerSpaceTop) },
+              { name: 'top-left', transformX: '0', transformY: '0', score: Math.min(containerSpaceLeft, containerSpaceTop) },
+              { name: 'bottom-right', transformX: '-100%', transformY: '-100%', score: Math.min(containerSpaceRight, containerSpaceBottom) },
+              { name: 'bottom-left', transformX: '0', transformY: '-100%', score: Math.min(containerSpaceLeft, containerSpaceBottom) },
+            ]
+            
+            // Sort by score (highest first) and pick the best
+            positions.sort((a, b) => b.score - a.score)
+            const bestPosition = positions[0]
+            transformX = bestPosition.transformX
+            transformY = bestPosition.transformY
+            
+            // Adjust position to keep tooltip within SVG container bounds
+            if (transformX === '-100%' && containerSpaceRight < tooltipWidth) {
+              // Tooltip extends beyond right edge, shift left
+              const neededSpace = tooltipWidth - containerSpaceRight
+              x = Math.max(svgLeftInParent + padding, anchorX - neededSpace)
+            } else if (transformX === '0' && containerSpaceLeft < tooltipWidth) {
+              // Tooltip extends beyond left edge, shift right
+              const neededSpace = tooltipWidth - containerSpaceLeft
+              x = Math.min(svgRightInParent - tooltipWidth - padding, anchorX + neededSpace)
+            }
+            
+            if (transformY === '0' && containerSpaceTop < tooltipHeight) {
+              // Tooltip extends beyond top edge, shift down
+              const neededSpace = tooltipHeight - containerSpaceTop
+              y = Math.max(svgTopInParent + padding, anchorY + neededSpace)
+            } else if (transformY === '-100%' && containerSpaceBottom < tooltipHeight) {
+              // Tooltip extends beyond bottom edge, shift up
+              const neededSpace = tooltipHeight - containerSpaceBottom
+              y = Math.max(svgTopInParent + padding, anchorY - neededSpace)
+            }
+          }
+          
+          // Final clamp to ensure tooltip stays within SVG container bounds
+          // Account for transform offset - calculate actual tooltip bounds
+          const minX = svgLeftInParent + padding
+          const maxX = svgRightInParent - padding
+          const minY = svgTopInParent + padding
+          const maxY = svgBottomInParent - padding
+          
+          // Calculate where tooltip edges actually are based on transform
+          let tooltipActualLeft = x
+          let tooltipActualRight = x
+          let tooltipActualTop = y
+          let tooltipActualBottom = y
+          
+          if (transformX === '-100%') {
+            tooltipActualLeft = x - tooltipWidth
+            tooltipActualRight = x
+          } else {
+            tooltipActualLeft = x
+            tooltipActualRight = x + tooltipWidth
+          }
+          
+          if (transformY === '-100%') {
+            tooltipActualTop = y - tooltipHeight
+            tooltipActualBottom = y
+          } else {
+            tooltipActualTop = y
+            tooltipActualBottom = y + tooltipHeight
+          }
+          
+          // Adjust x to keep tooltip within bounds
+          if (tooltipActualLeft < minX) {
+            const offset = minX - tooltipActualLeft
+            x += offset
+          } else if (tooltipActualRight > maxX) {
+            const offset = tooltipActualRight - maxX
+            x -= offset
+          }
+          
+          // Adjust y to keep tooltip within bounds
+          if (tooltipActualTop < minY) {
+            const offset = minY - tooltipActualTop
+            y += offset
+          } else if (tooltipActualBottom > maxY) {
+            const offset = tooltipActualBottom - maxY
+            y -= offset
+          }
+          
+          // Final safety clamp on anchor point itself
+          if (transformX === '-100%') {
+            x = Math.max(minX + tooltipWidth, Math.min(x, maxX))
+          } else {
+            x = Math.max(minX, Math.min(x, maxX - tooltipWidth))
+          }
+          
+          if (transformY === '-100%') {
+            y = Math.max(minY + tooltipHeight, Math.min(y, maxY))
+          } else {
+            y = Math.max(minY, Math.min(y, maxY - tooltipHeight))
+          }
 
           // Only modify the hovered node
           node.setAttribute('stroke-width', '4')
@@ -281,6 +442,8 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
             x,
             y,
             color: statusColor,
+            transformX,
+            transformY,
           })
         }
 
@@ -326,10 +489,162 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
 
           const svgRect = container.getBoundingClientRect()
           const nodeRect = node.getBoundingClientRect()
-          const nodeLeft = nodeRect.left - svgRect.left
-          const nodeTop = nodeRect.top - svgRect.top
+          
+          // Get the parent container (the div with relative positioning that contains the tooltip)
+          const parentContainer = container.parentElement
+          if (!parentContainer) return
+          const parentRect = parentContainer.getBoundingClientRect()
+          
+          // Calculate SVG container bounds relative to parent (for constraint checking)
+          const svgLeftInParent = svgRect.left - parentRect.left
+          const svgTopInParent = svgRect.top - parentRect.top
+          const svgRightInParent = svgLeftInParent + svgRect.width
+          const svgBottomInParent = svgTopInParent + svgRect.height
+          
+          // Calculate relative to parent container (tooltip's positioning context)
+          const nodeLeft = nodeRect.left - parentRect.left
+          const nodeTop = nodeRect.top - parentRect.top
           const centerX = nodeLeft + nodeRect.width / 2
           const centerY = nodeTop + nodeRect.height / 2
+
+          // Tooltip dimensions (approximate)
+          const tooltipWidth = 224 // w-56 = 14rem = 224px
+          const tooltipHeight = 200 // approximate height
+          const padding = 16 // minimum padding from container edge
+
+          // Check available space relative to SVG container bounds (the visible area)
+          // Constrain to SVG container, not the full parent div
+          const containerSpaceRight = svgRightInParent - centerX - padding
+          const containerSpaceLeft = centerX - svgLeftInParent - padding
+          const containerSpaceBottom = svgBottomInParent - centerY - padding
+          const containerSpaceTop = centerY - svgTopInParent - padding
+
+          // Determine best position: try each corner and pick the one that fits best
+          let x = centerX
+          let y = centerY
+          let transformX = '-100%' // top-right: tooltip's right edge at anchor
+          let transformY = '0' // top-right: tooltip's top edge at anchor
+
+          // Check if top-right fits within container
+          if (containerSpaceRight >= tooltipWidth && containerSpaceTop >= tooltipHeight) {
+            // Top-right fits perfectly
+            transformX = '-100%'
+            transformY = '0'
+          }
+          // Check if top-left fits within container
+          else if (containerSpaceLeft >= tooltipWidth && containerSpaceTop >= tooltipHeight) {
+            // Top-left fits
+            transformX = '0'
+            transformY = '0'
+          }
+          // Check if bottom-right fits within container
+          else if (containerSpaceRight >= tooltipWidth && containerSpaceBottom >= tooltipHeight) {
+            // Bottom-right fits
+            transformX = '-100%'
+            transformY = '-100%'
+          }
+          // Check if bottom-left fits within container
+          else if (containerSpaceLeft >= tooltipWidth && containerSpaceBottom >= tooltipHeight) {
+            // Bottom-left fits
+            transformX = '0'
+            transformY = '-100%'
+          }
+          // None fit perfectly, choose the position with the most available space
+          else {
+            const positions = [
+              { name: 'top-right', transformX: '-100%', transformY: '0', score: Math.min(containerSpaceRight, containerSpaceTop) },
+              { name: 'top-left', transformX: '0', transformY: '0', score: Math.min(containerSpaceLeft, containerSpaceTop) },
+              { name: 'bottom-right', transformX: '-100%', transformY: '-100%', score: Math.min(containerSpaceRight, containerSpaceBottom) },
+              { name: 'bottom-left', transformX: '0', transformY: '-100%', score: Math.min(containerSpaceLeft, containerSpaceBottom) },
+            ]
+            
+            // Sort by score (highest first) and pick the best
+            positions.sort((a, b) => b.score - a.score)
+            const bestPosition = positions[0]
+            transformX = bestPosition.transformX
+            transformY = bestPosition.transformY
+            
+            // Adjust position to keep tooltip within SVG container bounds
+            if (transformX === '-100%' && containerSpaceRight < tooltipWidth) {
+              // Tooltip extends beyond right edge, shift left
+              const neededSpace = tooltipWidth - containerSpaceRight
+              x = Math.max(svgLeftInParent + padding, centerX - neededSpace)
+            } else if (transformX === '0' && containerSpaceLeft < tooltipWidth) {
+              // Tooltip extends beyond left edge, shift right
+              const neededSpace = tooltipWidth - containerSpaceLeft
+              x = Math.min(svgRightInParent - tooltipWidth - padding, centerX + neededSpace)
+            }
+            
+            if (transformY === '0' && containerSpaceTop < tooltipHeight) {
+              // Tooltip extends beyond top edge, shift down
+              const neededSpace = tooltipHeight - containerSpaceTop
+              y = Math.max(svgTopInParent + padding, centerY + neededSpace)
+            } else if (transformY === '-100%' && containerSpaceBottom < tooltipHeight) {
+              // Tooltip extends beyond bottom edge, shift up
+              const neededSpace = tooltipHeight - containerSpaceBottom
+              y = Math.max(svgTopInParent + padding, centerY - neededSpace)
+            }
+          }
+          
+          // Final clamp to ensure tooltip stays within SVG container bounds
+          // Account for transform offset - calculate actual tooltip bounds
+          const minX = svgLeftInParent + padding
+          const maxX = svgRightInParent - padding
+          const minY = svgTopInParent + padding
+          const maxY = svgBottomInParent - padding
+          
+          // Calculate where tooltip edges actually are based on transform
+          let tooltipActualLeft = x
+          let tooltipActualRight = x
+          let tooltipActualTop = y
+          let tooltipActualBottom = y
+          
+          if (transformX === '-100%') {
+            tooltipActualLeft = x - tooltipWidth
+            tooltipActualRight = x
+          } else {
+            tooltipActualLeft = x
+            tooltipActualRight = x + tooltipWidth
+          }
+          
+          if (transformY === '-100%') {
+            tooltipActualTop = y - tooltipHeight
+            tooltipActualBottom = y
+          } else {
+            tooltipActualTop = y
+            tooltipActualBottom = y + tooltipHeight
+          }
+          
+          // Adjust x to keep tooltip within bounds
+          if (tooltipActualLeft < minX) {
+            const offset = minX - tooltipActualLeft
+            x += offset
+          } else if (tooltipActualRight > maxX) {
+            const offset = tooltipActualRight - maxX
+            x -= offset
+          }
+          
+          // Adjust y to keep tooltip within bounds
+          if (tooltipActualTop < minY) {
+            const offset = minY - tooltipActualTop
+            y += offset
+          } else if (tooltipActualBottom > maxY) {
+            const offset = tooltipActualBottom - maxY
+            y -= offset
+          }
+          
+          // Final safety clamp on anchor point itself
+          if (transformX === '-100%') {
+            x = Math.max(minX + tooltipWidth, Math.min(x, maxX))
+          } else {
+            x = Math.max(minX, Math.min(x, maxX - tooltipWidth))
+          }
+          
+          if (transformY === '-100%') {
+            y = Math.max(minY + tooltipHeight, Math.min(y, maxY))
+          } else {
+            y = Math.max(minY, Math.min(y, maxY - tooltipHeight))
+          }
 
           // Only modify the hovered node
           node.setAttribute('stroke-width', '4')
@@ -337,9 +652,11 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
 
           setTooltip({
             machine,
-            x: centerX,
-            y: centerY,
+            x,
+            y,
             color: statusColor,
+            transformX,
+            transformY,
           })
         }
 
@@ -364,7 +681,9 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
 
         const handleClick = () => {
           onMachineClick?.(machine)
-          router.push(`/machines/${machine.id}`)
+          // Route to assets page using asset_alias or id
+          const assetAlias = machine.asset_alias || machine.id
+          router.push(`/assets/${assetAlias}`)
         }
 
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -401,7 +720,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
     }
   }, [layoutMachines, machineLookup, onMachineClick, router])
 
-  return (
+              return (
     <div className="relative w-full rounded-xl border border-rtr-border bg-white">
       <div className="relative">
         <div
@@ -411,11 +730,12 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
         {tooltip && (
           <div
             data-tooltip
-            className="absolute z-10 w-56 -translate-x-full rounded-lg border border-rtr-border bg-white p-3 text-xs text-rtr-ink shadow-lg pointer-events-auto"
+            className="absolute z-10 w-56 rounded-lg border border-rtr-border bg-white p-3 text-xs text-rtr-ink shadow-lg pointer-events-auto"
             style={{
               left: `${tooltip.x}px`,
               top: `${Math.max(tooltip.y, 16)}px`,
               opacity: 0.9,
+              transform: `translate(${tooltip.transformX || '-100%'}, ${tooltip.transformY || '0'})`,
             }}
             onMouseEnter={() => {
               // Cancel any pending hide timeout
@@ -460,12 +780,15 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
             <button
               type="button"
               className="mt-3 w-full rounded-md bg-rtr-wine px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-rtr-wine/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rtr-wine/70"
-              onClick={() => router.push(`/machines/${tooltip.machine.id}`)}
+              onClick={() => {
+                const assetAlias = tooltip.machine.asset_alias || tooltip.machine.id
+                router.push(`/assets/${assetAlias}`)
+              }}
             >
-              View machine details
+              View asset details
             </button>
-          </div>
-        )}
+            </div>
+          )}
       </div>
     </div>
   )

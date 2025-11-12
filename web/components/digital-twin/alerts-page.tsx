@@ -7,21 +7,26 @@ import { formatDateTime, getSeverityColor } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { AlertTriangle, Check, X, Search, Wrench, Users, TrendingDown, ChevronRight } from 'lucide-react'
+import { AlertTriangle, Check, X, Search, Wrench, Users, TrendingDown, ChevronRight, TrendingUp, Activity, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 
 export function AlertsPage() {
   const router = useRouter()
-  const [alerts, setAlerts] = useState<(Alert & { machine: Machine | null; ticket?: MaintenanceTicket | null })[]>(
+  const [alerts, setAlerts] = useState<(Alert & { machine: Machine | null; asset?: any; ticket?: MaintenanceTicket | null })[]>(
+    []
+  )
+  const [allAlerts, setAllAlerts] = useState<(Alert & { machine: Machine | null; asset?: any; ticket?: MaintenanceTicket | null })[]>(
     []
   )
   const [technicians, setTechnicians] = useState<UserProfile[]>([])
   const [machinesOutOfService, setMachinesOutOfService] = useState<Machine[]>([])
   const [loading, setLoading] = useState(true)
   const [showTicketForm, setShowTicketForm] = useState(false)
-  const [selectedAlert, setSelectedAlert] = useState<Alert & { machine: Machine | null } | null>(null)
+  const [selectedAlert, setSelectedAlert] = useState<Alert & { machine: Machine | null; asset?: any } | null>(null)
   const [drillDownSeverity, setDrillDownSeverity] = useState<string | null>(null)
+  const [timeWindow, setTimeWindow] = useState<30 | 60 | 90>(30)
   const [filter, setFilter] = useState<{
     severity?: string
     acknowledged?: string
@@ -32,13 +37,13 @@ export function AlertsPage() {
   const [newTicket, setNewTicket] = useState<{
     title: string
     description: string
-    priority: 'low' | 'medium' | 'high' | 'urgent'
+    priority: 'Low' | 'Medium' | 'High' | 'Urgent'
     assigned_to: string
     production_impact: boolean
   }>({
     title: '',
     description: '',
-    priority: 'medium',
+    priority: 'Medium',
     assigned_to: '',
     production_impact: false,
   })
@@ -53,9 +58,59 @@ export function AlertsPage() {
     try {
       const supabase = createClient()
 
+      // Load all alerts for stats (unfiltered)
+      const { data: allAlertsData } = await supabase
+        .from('alerts')
+        .select('*, assets(*)')
+        .order('created_at', { ascending: false })
+
+      if (allAlertsData) {
+        const allAlertsWithMachines = await Promise.all(
+          allAlertsData.map(async (alert: any) => {
+            let ticketData: MaintenanceTicket | null = null
+
+            const { data: ticketFromAlert } = await supabase
+              .from('maintenance_tickets')
+              .select('*')
+              .eq('alert_id', alert.id)
+              .in('status', ['Open', 'In_progress'])
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+
+            if (ticketFromAlert) {
+              ticketData = ticketFromAlert as MaintenanceTicket
+            } else {
+              const assetId = (alert as any).asset_id
+              const { data: ticketFromMachine } = await supabase
+                .from('maintenance_tickets')
+                .select('*')
+                .eq('asset_id', assetId)
+                .in('status', ['Open', 'In_progress'])
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+
+              if (ticketFromMachine) {
+                ticketData = ticketFromMachine as MaintenanceTicket
+              }
+            }
+
+            return {
+              ...alert,
+              machine: alert.assets || null,
+              asset: alert.assets || null,
+              ticket: ticketData,
+            }
+          })
+        )
+        setAllAlerts(allAlertsWithMachines)
+      }
+
+      // Load filtered alerts for display
       let alertsQuery = supabase
         .from('alerts')
-        .select('*, machines(*)')
+        .select('*, assets(*)')
         .order('created_at', { ascending: false })
 
       if (filter.severity) {
@@ -80,7 +135,7 @@ export function AlertsPage() {
               .from('maintenance_tickets')
               .select('*')
               .eq('alert_id', alert.id)
-              .in('status', ['open', 'in_progress'])
+              .in('status', ['Open', 'In_progress'])
               .order('created_at', { ascending: false })
               .limit(1)
               .maybeSingle()
@@ -88,11 +143,12 @@ export function AlertsPage() {
             if (ticketFromAlert) {
               ticketData = ticketFromAlert as MaintenanceTicket
             } else {
+              const assetId = (alert as any).asset_id
               const { data: ticketFromMachine } = await supabase
                 .from('maintenance_tickets')
                 .select('*')
-                .eq('machine_id', alert.machine_id)
-                .in('status', ['open', 'in_progress'])
+                .eq('asset_id', assetId)
+                .in('status', ['Open', 'In_progress'])
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .maybeSingle()
@@ -104,7 +160,8 @@ export function AlertsPage() {
 
             return {
               ...alert,
-              machine: alert.machines,
+              machine: alert.assets || null,
+              asset: alert.assets || null,
               ticket: ticketData,
             }
           })
@@ -141,7 +198,7 @@ export function AlertsPage() {
       // Get machines that are offline, critical, or maintenance status
       // AND have open/in_progress tickets
       const { data: machinesData } = await supabase
-        .from('machines')
+        .from('assets')
         .select('*, maintenance_tickets!inner(*)')
         .in('status', ['offline', 'critical', 'maintenance'])
         .in('maintenance_tickets.status', ['open', 'in_progress'])
@@ -187,26 +244,27 @@ export function AlertsPage() {
     }
   }
 
-  const handleOpenTicketForm = (alert: Alert & { machine: Machine | null }) => {
+  const handleOpenTicketForm = (alert: Alert & { machine: Machine | null; asset?: any }) => {
     setSelectedAlert(alert)
+    const asset = alert.asset || alert.machine
     setNewTicket({
-      title: `Maintenance Request: ${alert.machine?.name || 'Unknown Machine'}`,
+      title: `Maintenance Request: ${asset?.name || 'Unknown Asset'}`,
       description: alert.message,
       priority:
-        alert.severity === 'critical'
-          ? 'urgent'
-          : alert.severity === 'high'
-            ? 'high'
-            : 'medium',
+        alert.severity === 'Critical'
+          ? 'Urgent'
+          : alert.severity === 'High'
+            ? 'High'
+            : 'Medium',
       assigned_to: '',
-      production_impact: alert.machine?.status === 'offline' || alert.machine?.status === 'critical' || false,
+      production_impact: asset?.status === 'Offline' || asset?.status === 'Critical' || false,
     })
     setShowTicketForm(true)
   }
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedAlert?.machine) return
+    if (!selectedAlert) return
 
     try {
       const supabase = createClient()
@@ -216,8 +274,14 @@ export function AlertsPage() {
 
       if (!user) return
 
+      const assetId = (selectedAlert as any).asset_id || selectedAlert.machine?.id || selectedAlert.asset?.id
+      if (!assetId) {
+        console.error('No asset ID found for alert')
+        return
+      }
+      
       const ticketData: any = {
-        machine_id: selectedAlert.machine.id,
+        asset_id: assetId,
         alert_id: selectedAlert.id,
         title: newTicket.title,
         description: newTicket.description,
@@ -233,12 +297,12 @@ export function AlertsPage() {
       const { error } = await supabase.from('maintenance_tickets').insert(ticketData)
 
       if (!error) {
-        // If production impact, update machine status
-        if (newTicket.production_impact && selectedAlert.machine) {
+        // If production impact, update asset status
+        if (newTicket.production_impact && assetId) {
           await supabase
-            .from('machines')
+            .from('assets')
             .update({ status: 'maintenance' })
-            .eq('id', selectedAlert.machine.id)
+            .eq('id', assetId)
         }
 
         // Acknowledge the alert
@@ -278,35 +342,287 @@ export function AlertsPage() {
     )
   }
 
+  // Calculate stats from all alerts (not filtered)
+  const threeDaysAgo = new Date()
+  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+  const now = new Date()
+  now.setHours(23, 59, 59, 999)
+
+  // Calculate active alerts (unacknowledged or acknowledged after today)
+  const activeAlerts = allAlerts.filter((alert) => {
+    if (!alert.acknowledged) return true
+    if (alert.acknowledged_at) {
+      const acknowledged = new Date(alert.acknowledged_at)
+      return acknowledged > now
+    }
+    return false
+  })
+
   const stats = {
-    total: alerts.length,
-    unacknowledged: alerts.filter((a) => !a.acknowledged).length,
-    critical: alerts.filter((a) => a.severity === 'critical').length,
-    high: alerts.filter((a) => a.severity === 'high').length,
+    total: activeAlerts.length, // Total active alerts (matches chart)
+    unacknowledged: allAlerts.filter((a) => !a.acknowledged).length,
+    critical: activeAlerts.filter((a) => a.severity === 'Critical').length,
+    high: activeAlerts.filter((a) => a.severity === 'High').length,
     outOfService: machinesOutOfService.length,
+    impactingProduction: activeAlerts.filter((a) => {
+      const asset = (a as any).asset || a.machine
+      return asset && (asset.status === 'Offline' || asset.status === 'Critical' || asset.status === 'Maintenance')
+    }).length,
+    resolvedLast3Days: allAlerts.filter((a) => {
+      if (!a.acknowledged || !a.acknowledged_at) return false
+      const acknowledgedDate = new Date(a.acknowledged_at)
+      return acknowledgedDate >= threeDaysAgo
+    }).length,
+    newLast3Days: allAlerts.filter((a) => {
+      const createdDate = new Date(a.created_at)
+      return createdDate >= threeDaysAgo
+    }).length,
   }
+
+  // Pie chart data by status (acknowledged vs unacknowledged)
+  const pieData = [
+    { name: 'Unacknowledged', value: stats.unacknowledged, color: '#ef4444' },
+    { name: 'Acknowledged', value: allAlerts.length - stats.unacknowledged, color: '#10b981' },
+  ]
+
+  // Pie chart data by severity (using active alerts)
+  const severityPieData = [
+    { name: 'Critical', value: stats.critical, color: '#dc2626' },
+    { name: 'High', value: stats.high, color: '#ea580c' },
+    { name: 'Medium', value: activeAlerts.filter((a) => a.severity === 'Medium').length, color: '#f59e0b' },
+    { name: 'Low', value: activeAlerts.filter((a) => a.severity === 'Low').length, color: '#3b82f6' },
+  ]
+
+  // Generate time series data for stacked area chart
+  const generateTimeSeriesData = () => {
+    const endDate = new Date()
+    endDate.setHours(23, 59, 59, 999)
+    const startDate = new Date()
+    startDate.setDate(startDate.getDate() - timeWindow)
+    startDate.setHours(0, 0, 0, 0)
+    
+    // Create array of dates
+    const dates: Date[] = []
+    const currentDate = new Date(startDate)
+    while (currentDate <= endDate) {
+      dates.push(new Date(currentDate))
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+    
+    // Process each date
+    return dates.map((date) => {
+      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      const dateEnd = new Date(date)
+      dateEnd.setHours(23, 59, 59, 999)
+      
+      // Count active alerts per severity for this date
+      // An alert is active if: created <= dateEnd AND (not acknowledged OR acknowledged_at > dateEnd)
+      // This matches the logic used for calculating stats.total
+      const activeAlertsForDate = allAlerts.filter((alert) => {
+        const created = new Date(alert.created_at)
+        if (created > dateEnd) return false
+        
+        // If not acknowledged, it's active
+        if (!alert.acknowledged) return true
+        
+        // If acknowledged, check if acknowledged_at is after this date
+        if (alert.acknowledged_at) {
+          const acknowledged = new Date(alert.acknowledged_at)
+          return acknowledged > dateEnd
+        }
+        
+        return false
+      })
+      
+      return {
+        date: dateStr,
+        Critical: activeAlertsForDate.filter((a) => a.severity === 'Critical').length,
+        High: activeAlertsForDate.filter((a) => a.severity === 'High').length,
+        Medium: activeAlertsForDate.filter((a) => a.severity === 'Medium').length,
+        Low: activeAlertsForDate.filter((a) => a.severity === 'Low').length,
+      }
+    })
+  }
+  
+  const timeSeriesData = generateTimeSeriesData()
+  
+  // Verify consistency: today's active alerts should match the chart
+  const todayData = timeSeriesData[timeSeriesData.length - 1]
+  const todayActiveCount = (todayData?.Critical || 0) + (todayData?.High || 0) + (todayData?.Medium || 0) + (todayData?.Low || 0)
+
+  // Generate AI insights
+  const generateInsights = () => {
+    const insights = []
+    
+    // Insight 1: Alert volume trend
+    const avgAlertsPerDay = allAlerts.length > 0 ? allAlerts.length / 30 : 0 // Assuming 30 days of data
+    const recentAlertsPerDay = stats.newLast3Days / 3
+    if (avgAlertsPerDay > 0 && recentAlertsPerDay > avgAlertsPerDay * 1.2) {
+      insights.push({
+        type: 'warning',
+        title: 'Alert Volume Increase',
+        message: `Alert generation rate has increased ${Math.round((recentAlertsPerDay / avgAlertsPerDay - 1) * 100)}% in the last 3 days compared to the average.`,
+      })
+    } else if (recentAlertsPerDay < avgAlertsPerDay * 0.8) {
+      insights.push({
+        type: 'success',
+        title: 'Alert Volume Decrease',
+        message: `Alert generation rate has decreased ${Math.round((1 - recentAlertsPerDay / avgAlertsPerDay) * 100)}% in the last 3 days, indicating improved system stability.`,
+      })
+    }
+
+    // Insight 2: Critical alert concentration
+    const criticalPercentage = allAlerts.length > 0 ? (stats.critical / allAlerts.length) * 100 : 0
+    if (criticalPercentage > 15) {
+      insights.push({
+        type: 'critical',
+        title: 'High Critical Alert Ratio',
+        message: `${criticalPercentage.toFixed(1)}% of alerts are critical. Consider reviewing maintenance schedules and preventive measures.`,
+      })
+    }
+
+    // Insight 3: Response time
+    const acknowledgedAlerts = allAlerts.filter((a) => a.acknowledged && a.acknowledged_at)
+    if (acknowledgedAlerts.length > 0) {
+      const avgResponseTime = acknowledgedAlerts.reduce((sum, a) => {
+        const created = new Date(a.created_at)
+        const acknowledged = new Date(a.acknowledged_at!)
+        return sum + (acknowledged.getTime() - created.getTime()) / (1000 * 60 * 60) // hours
+      }, 0) / acknowledgedAlerts.length
+      
+      if (avgResponseTime > 24) {
+        insights.push({
+          type: 'warning',
+          title: 'Slow Alert Response Time',
+          message: `Average alert acknowledgment time is ${avgResponseTime.toFixed(1)} hours. Consider improving response protocols.`,
+        })
+      }
+    }
+
+    // Insight 4: Production impact
+    if (stats.impactingProduction > 0) {
+      insights.push({
+        type: 'critical',
+        title: 'Production Impact',
+        message: `${stats.impactingProduction} alerts are associated with assets currently impacting production. Immediate attention required.`,
+      })
+    }
+
+    // Insight 5: Unacknowledged alerts
+    const unackPercentage = allAlerts.length > 0 ? (stats.unacknowledged / allAlerts.length) * 100 : 0
+    if (unackPercentage > 20) {
+      insights.push({
+        type: 'warning',
+        title: 'High Unacknowledged Alert Rate',
+        message: `${unackPercentage.toFixed(1)}% of alerts remain unacknowledged. Review alert management processes.`,
+      })
+    }
+
+    // Insight 6: Time-based patterns
+    const alertsByHour = new Array(24).fill(0)
+    allAlerts.forEach((a) => {
+      const hour = new Date(a.created_at).getHours()
+      alertsByHour[hour]++
+    })
+    const peakHour = alertsByHour.indexOf(Math.max(...alertsByHour))
+    if (alertsByHour[peakHour] > allAlerts.length / 24 * 2) {
+      insights.push({
+        type: 'info',
+        title: 'Peak Alert Time',
+        message: `Most alerts occur around ${peakHour}:00. Consider scheduling preventive maintenance during off-peak hours.`,
+      })
+    }
+
+    // Insight 7: Asset correlation
+    const assetAlertCounts = new Map<string, number>()
+    allAlerts.forEach((a) => {
+      const assetId = (a as any).asset_id || (a as any).machine_id
+      if (assetId) {
+        assetAlertCounts.set(assetId, (assetAlertCounts.get(assetId) || 0) + 1)
+      }
+    })
+    const maxAlerts = Math.max(...Array.from(assetAlertCounts.values()))
+    if (maxAlerts > 5) {
+      const problemAsset = Array.from(assetAlertCounts.entries()).find(([_, count]) => count === maxAlerts)
+      if (problemAsset) {
+        const asset = allAlerts.find((a) => ((a as any).asset_id || (a as any).machine_id) === problemAsset[0])
+        insights.push({
+          type: 'warning',
+          title: 'Frequent Alert Source',
+          message: `One asset has generated ${maxAlerts} alerts. Consider detailed inspection or replacement evaluation.`,
+        })
+      }
+    }
+
+    // Insight 8: Resolution rate
+    const resolutionRate = (stats.resolvedLast3Days / stats.newLast3Days) * 100
+    if (stats.newLast3Days > 0) {
+      if (resolutionRate < 50) {
+        insights.push({
+          type: 'warning',
+          title: 'Low Resolution Rate',
+          message: `Only ${resolutionRate.toFixed(1)}% of new alerts have been resolved in the last 3 days.`,
+        })
+      } else if (resolutionRate > 80) {
+        insights.push({
+          type: 'success',
+          title: 'High Resolution Rate',
+          message: `${resolutionRate.toFixed(1)}% of new alerts have been resolved, indicating effective alert management.`,
+        })
+      }
+    }
+
+    // Insight 9: Severity distribution
+    if (allAlerts.length > 0 && stats.critical + stats.high > allAlerts.length * 0.5) {
+      insights.push({
+        type: 'critical',
+        title: 'High Severity Alert Concentration',
+        message: `Over 50% of alerts are Critical or High severity. Review root causes and preventive measures.`,
+      })
+    }
+
+    // Insight 10: Maintenance correlation
+    const alertsWithTickets = allAlerts.filter((a) => a.ticket)
+    const ticketRate = allAlerts.length > 0 ? (alertsWithTickets.length / allAlerts.length) * 100 : 0
+    if (ticketRate < 30 && stats.unacknowledged > 0) {
+      insights.push({
+        type: 'info',
+        title: 'Low Ticket Creation Rate',
+        message: `Only ${ticketRate.toFixed(1)}% of alerts have associated maintenance tickets. Consider creating tickets for unacknowledged alerts.`,
+      })
+    }
+
+    return insights.slice(0, 10) // Return up to 10 insights
+  }
+
+  const aiInsights = generateInsights()
 
   let filteredAlerts = filter.search
     ? alerts.filter(
-        (alert) =>
+        (alert) => {
+          const asset = (alert as any).asset || alert.machine
+          return (
           alert.message.toLowerCase().includes(filter.search!.toLowerCase()) ||
-          alert.machine?.name.toLowerCase().includes(filter.search!.toLowerCase())
+          asset?.name?.toLowerCase().includes(filter.search!.toLowerCase())
+        )}
       )
     : alerts
 
-  // Filter by drill-down severity
+  // Filter by drill-down severity (handle capitalization)
   if (drillDownSeverity) {
-    filteredAlerts = filteredAlerts.filter((a) => a.severity === drillDownSeverity)
+    filteredAlerts = filteredAlerts.filter((a) => a.severity === drillDownSeverity || a.severity.toLowerCase() === drillDownSeverity.toLowerCase())
   }
 
   // Filter by out of service
   if (filter.outOfService) {
     filteredAlerts = filteredAlerts.filter(
-      (alert) =>
-        alert.machine &&
-        (alert.machine.status === 'offline' ||
-          alert.machine.status === 'critical' ||
-          alert.machine.status === 'maintenance')
+      (alert) => {
+        const asset = (alert as any).asset || alert.machine
+        return asset &&
+        (asset.status === 'offline' ||
+          asset.status === 'critical' ||
+          asset.status === 'maintenance')
+      }
     )
   }
 
@@ -319,41 +635,230 @@ export function AlertsPage() {
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Total</h3>
-          <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+      {/* Top Section - 3 columns: 20%, 40%, 40% */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6" style={{ height: '300px', overflow: 'hidden' }}>
+        {/* First 20% - High-level Metrics (Tabular Layout) */}
+        <div className="lg:col-span-1 h-full overflow-hidden">
+          <div className="bg-white rounded-lg shadow p-3 h-full flex flex-col overflow-hidden">
+            <h3 className="text-xl font-semibold text-gray-900 mb-1.5 flex items-center gap-2 flex-shrink-0">
+              <Activity className="w-5 h-5 text-gray-600" />
+              Alert Metrics
+            </h3>
+            <table className="w-full">
+              <tbody>
+                <tr className="border-b border-gray-200">
+                  <td className="py-1.5">
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                      <span className="text-base font-medium text-gray-500">Total Alerts</span>
+                    </div>
+                  </td>
+                  <td className="py-1.5 text-right">
+                    <span className="text-base font-bold text-gray-900">{stats.total}</span>
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-200">
+                  <td className="py-1.5">
+                    <div className="flex items-center gap-2">
+                      <TrendingDown className="w-5 h-5 text-red-600 flex-shrink-0" />
+                      <span className="text-base font-medium text-gray-500">Impacting Production</span>
+                    </div>
+                  </td>
+                  <td className="py-1.5 text-right">
+                    <span className="text-base font-bold text-red-600">{stats.impactingProduction}</span>
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-200">
+                  <td className="py-1.5">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                        <span className="text-base font-medium text-gray-500">Resolved (3 Day)</span>
+                      </div>
+                      <span className="text-xs text-gray-400 mt-0.5 ml-7">Alerts acknowledged in last 3 days</span>
+                    </div>
+                  </td>
+                  <td className="py-1.5 text-right align-top">
+                    <span className="text-base font-bold text-green-600">{stats.resolvedLast3Days}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-1.5">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                        <span className="text-base font-medium text-gray-500">New (3 Day)</span>
+                      </div>
+                      <span className="text-xs text-gray-400 mt-0.5 ml-7">New alerts generated in last 3 days</span>
+                    </div>
+                  </td>
+                  <td className="py-1.5 text-right align-top">
+                    <span className="text-base font-bold text-blue-600">{stats.newLast3Days}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-1">
-            Unacknowledged
-          </h3>
-          <p className="text-2xl font-bold text-red-600">
-            {stats.unacknowledged}
-          </p>
+
+        {/* Second 40% - Stacked Area Chart by Severity */}
+        <div className="lg:col-span-2 h-full overflow-hidden">
+          <div className="bg-white rounded-lg shadow p-3 h-full flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between mb-1.5 flex-shrink-0">
+              <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-gray-600" />
+                Alert Trends
+              </h3>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setTimeWindow(30)}
+                  className={`px-2 py-1 text-xs rounded ${
+                    timeWindow === 30
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  30d
+                </button>
+                <button
+                  onClick={() => setTimeWindow(60)}
+                  className={`px-2 py-1 text-xs rounded ${
+                    timeWindow === 60
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  60d
+                </button>
+                <button
+                  onClick={() => setTimeWindow(90)}
+                  className={`px-2 py-1 text-xs rounded ${
+                    timeWindow === 90
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  90d
+                </button>
+              </div>
+            </div>
+            {allAlerts.length > 0 && timeSeriesData.length > 0 ? (
+              <div className="flex-1 min-h-0 w-full" style={{ height: 'calc(100% - 40px)' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={timeSeriesData}>
+                    <defs>
+                      <linearGradient id="colorCritical" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#dc2626" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#dc2626" stopOpacity={0.1}/>
+                      </linearGradient>
+                      <linearGradient id="colorHigh" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ea580c" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#ea580c" stopOpacity={0.1}/>
+                      </linearGradient>
+                      <linearGradient id="colorMedium" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1}/>
+                      </linearGradient>
+                      <linearGradient id="colorLow" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 10 }}
+                      interval={timeWindow === 30 ? 2 : timeWindow === 60 ? 5 : 7}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 10 }}
+                      label={{ value: 'Active Alerts', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '4px' }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
+                      iconType="square"
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="Critical" 
+                      stackId="1" 
+                      stroke="#dc2626" 
+                      fill="url(#colorCritical)" 
+                      name="Critical"
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="High" 
+                      stackId="1" 
+                      stroke="#ea580c" 
+                      fill="url(#colorHigh)" 
+                      name="High"
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="Medium" 
+                      stackId="1" 
+                      stroke="#f59e0b" 
+                      fill="url(#colorMedium)" 
+                      name="Medium"
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="Low" 
+                      stackId="1" 
+                      stroke="#3b82f6" 
+                      fill="url(#colorLow)" 
+                      name="Low"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400 text-xs">
+                No data available
+              </div>
+            )}
+          </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-gray-50" onClick={() => setDrillDownSeverity(drillDownSeverity === 'critical' ? null : 'critical')}>
-          <h3 className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-1">
-            Critical
-            {drillDownSeverity === 'critical' && <ChevronRight className="w-4 h-4" />}
-          </h3>
-          <p className="text-2xl font-bold text-red-600">{stats.critical}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-gray-50" onClick={() => setDrillDownSeverity(drillDownSeverity === 'high' ? null : 'high')}>
-          <h3 className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-1">
-            High
-            {drillDownSeverity === 'high' && <ChevronRight className="w-4 h-4" />}
-          </h3>
-          <p className="text-2xl font-bold text-orange-600">{stats.high}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-2 border-red-300">
-          <h3 className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-1">
-            <TrendingDown className="w-4 h-4 text-red-600" />
-            Out of Service
-          </h3>
-          <p className="text-2xl font-bold text-red-600">{stats.outOfService}</p>
-          <p className="text-xs text-gray-500 mt-1">Impacting Production</p>
+
+        {/* Last 40% - AI Insights */}
+        <div className="md:col-span-2 lg:col-span-2 h-full overflow-hidden">
+          <div className="bg-white rounded-lg shadow p-3 h-full flex flex-col overflow-hidden">
+            <h3 className="text-xl font-semibold text-gray-900 mb-1.5 flex items-center gap-2 flex-shrink-0">
+              <AlertTriangle className="w-5 h-5 text-blue-600" />
+              AI Maintenance Insights
+            </h3>
+            <div className="flex-1 overflow-y-auto min-h-0" style={{ maxHeight: 'calc(100% - 30px)' }}>
+              {aiInsights.length > 0 ? (
+                <div className="space-y-1">
+                  {aiInsights.map((insight, index) => (
+                    <div
+                      key={index}
+                      className={`py-1.5 px-2 rounded border-l-4 ${
+                        insight.type === 'critical'
+                          ? 'bg-red-50 border-red-500'
+                          : insight.type === 'warning'
+                            ? 'bg-orange-50 border-orange-500'
+                            : insight.type === 'success'
+                              ? 'bg-green-50 border-green-500'
+                              : 'bg-blue-50 border-blue-500'
+                      }`}
+                    >
+                      <h4 className="font-semibold text-xs text-gray-900 leading-tight">{insight.title}</h4>
+                      <p className="text-xs text-gray-700 mt-0.5 leading-tight">{insight.message}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-gray-400">
+                  <p className="text-xs">No insights available at this time</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -367,7 +872,7 @@ export function AlertsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {machinesOutOfService.map((machine) => {
               const machineAlerts = alerts.filter(
-                (a) => a.machine_id === machine.id && !a.acknowledged
+                (a) => ((a as any).asset_id || (a as any).machine_id) === machine.id && !a.acknowledged
               )
               return (
                 <div
@@ -377,7 +882,7 @@ export function AlertsPage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <Link
-                        href={`/machines/${machine.id}`}
+                        href={`/assets/${machine.id}`}
                         className="font-medium text-gray-900 hover:text-blue-600"
                       >
                         {machine.name}
@@ -493,9 +998,9 @@ export function AlertsPage() {
                 <div
                   key={alert.id}
                   className={`border rounded-lg p-4 ${
-                    alert.severity === 'critical'
+                    alert.severity === 'Critical'
                       ? 'border-red-300 bg-red-50'
-                      : alert.severity === 'high'
+                      : alert.severity === 'High'
                         ? 'border-orange-300 bg-orange-50'
                         : 'border-gray-200 bg-white'
                   }`}
@@ -505,9 +1010,9 @@ export function AlertsPage() {
                       <div className="flex items-center gap-3 mb-2">
                         <AlertTriangle
                           className={`w-5 h-5 ${
-                            alert.severity === 'critical'
+                            alert.severity === 'Critical'
                               ? 'text-red-600'
-                              : alert.severity === 'high'
+                              : alert.severity === 'High'
                                 ? 'text-orange-600'
                                 : 'text-yellow-600'
                           }`}
@@ -524,12 +1029,12 @@ export function AlertsPage() {
                             Unacknowledged
                           </span>
                         )}
-                        {alert.machine && (
+                        {(alert.machine || alert.asset) && (
                           <Link
-                            href={`/machines/${alert.machine.id}`}
+                            href={`/assets/${(alert.asset || alert.machine)?.id}`}
                             className="text-blue-600 hover:underline text-sm font-medium"
                           >
-                            {alert.machine.name}
+                            {(alert.asset || alert.machine)?.name}
                           </Link>
                         )}
                       </div>
@@ -553,7 +1058,7 @@ export function AlertsPage() {
                             <Check className="w-4 h-4 mr-1" />
                             Acknowledge
                           </Button>
-                          {alert.machine && !alert.ticket && (
+                          {(alert.machine || alert.asset) && !alert.ticket && (
                             <Button
                               size="sm"
                               onClick={() => handleOpenTicketForm(alert)}
@@ -608,9 +1113,9 @@ export function AlertsPage() {
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle
                     className={`w-5 h-5 ${
-                      selectedAlert.severity === 'critical'
+                      selectedAlert.severity === 'Critical'
                         ? 'text-red-600'
-                        : selectedAlert.severity === 'high'
+                        : selectedAlert.severity === 'High'
                           ? 'text-orange-600'
                           : 'text-yellow-600'
                     }`}
@@ -624,7 +1129,7 @@ export function AlertsPage() {
                   </span>
                 </div>
                 <p className="text-sm text-gray-900 font-medium mb-1">
-                  {selectedAlert.machine?.name}
+                  {(selectedAlert as any).asset?.name || selectedAlert.machine?.name || 'Unknown Asset'}
                 </p>
                 <p className="text-sm text-gray-600">{selectedAlert.message}</p>
               </div>

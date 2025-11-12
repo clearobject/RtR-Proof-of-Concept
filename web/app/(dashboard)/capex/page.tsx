@@ -59,10 +59,17 @@ export default function CapexPage() {
       const assetsResult = await supabase
         .from('assets')
         .select('*')
-        .eq('status', 'active')
+        .eq('status', 'Active')
         .order('created_at', { ascending: false })
 
-      if (!assetsResult.data) return
+      if (!assetsResult.data || assetsResult.data.length === 0) {
+        console.log('No active assets found')
+        setAssets([])
+        setLoading(false)
+        return
+      }
+
+      console.log(`Loaded ${assetsResult.data.length} active assets`)
 
       // Load related data for each asset
       const assetsWithPriority: AssetWithPriority[] = await Promise.all(
@@ -111,9 +118,11 @@ export default function CapexPage() {
       // Sort by priority score (highest first)
       assetsWithPriority.sort((a, b) => b.priorityScore - a.priorityScore)
 
+      console.log(`Processed ${assetsWithPriority.length} assets with priority scores`)
       setAssets(assetsWithPriority)
     } catch (error) {
       console.error('Error loading capex data:', error)
+      setAssets([])
     } finally {
       setLoading(false)
     }
@@ -180,7 +189,7 @@ export default function CapexPage() {
     tco: Math.round(asset.tco / 1000), // In thousands
   }))
 
-  // Timeline data (next 5 years)
+  // Timeline data (next 5 years) - forecast replacement costs
   const timelineData = Array.from({ length: 5 }, (_, i) => {
     const year = new Date().getFullYear() + i
     const assetsInYear = sortedAssets.filter((asset) => {
@@ -190,10 +199,19 @@ export default function CapexPage() {
         (asset.expected_life_years || 0)
       return replacementYear === year
     })
+    
+    // Calculate replacement cost: acquisition_cost - salvage_value + installation (10% of acquisition)
+    const replacementCosts = assetsInYear.map((asset) => {
+      const acquisitionCost = (asset as any).acquisition_cost || asset.tco
+      const salvageValue = (asset as any).salvage_value || 0
+      const installationCost = acquisitionCost * 0.1 // 10% installation cost
+      return acquisitionCost - salvageValue + installationCost
+    })
+    
     return {
       year: year.toString(),
       count: assetsInYear.length,
-      estimatedCost: assetsInYear.reduce((sum, a) => sum + a.tco, 0),
+      estimatedCost: replacementCosts.reduce((sum, cost) => sum + cost, 0),
     }
   })
 
@@ -347,10 +365,10 @@ export default function CapexPage() {
                 className="rounded-md border border-gray-300 px-3 py-2 text-sm"
               >
                 <option value="">All</option>
-                <option value="critical">Critical</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
               </select>
             </div>
             {filterCriticality && (
@@ -414,7 +432,9 @@ export default function CapexPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {asset.type}
+                          {asset.type
+                            ?.replace(/_/g, ' ')
+                            .replace(/\b\w/g, (char) => char.toUpperCase()) || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -451,11 +471,11 @@ export default function CapexPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`px-2 py-1 rounded text-xs font-medium ${
-                              asset.criticality === 'critical'
+                              asset.criticality === 'Critical'
                                 ? 'bg-red-100 text-red-800'
-                                : asset.criticality === 'high'
+                                : asset.criticality === 'High'
                                 ? 'bg-orange-100 text-orange-800'
-                                : asset.criticality === 'medium'
+                                : asset.criticality === 'Medium'
                                 ? 'bg-yellow-100 text-yellow-800'
                                 : 'bg-blue-100 text-blue-800'
                             }`}

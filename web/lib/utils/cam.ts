@@ -30,7 +30,8 @@ export function calculateTCO(
   downtimeEvents: DowntimeEvent[],
   estimatedHourlyDowntimeCost: number = 100
 ): TCOData {
-  const purchaseCost = 0 // Would come from asset record if we had it
+  // Get acquisition cost from asset record (if available)
+  const purchaseCost = (asset as any).acquisition_cost || 0
   const maintenanceCost = costs.reduce((sum, cost) => sum + Number(cost.amount), 0)
   
   // Calculate downtime cost (estimated)
@@ -75,11 +76,18 @@ export function calculateReplacementPriority(
   const costFactor = Math.min(totalMaintenanceCost / 10000 * 30, 30) // Normalize to $10k
   
   // Downtime factor (0-20 points): more downtime events score higher
-  const unplannedDowntime = downtimeEvents.filter((d) => d.type === 'unplanned').length
+  const unplannedDowntime = downtimeEvents.filter((d) => 
+    d.type === 'Unplanned'
+  ).length
   const downtimeFactor = Math.min(unplannedDowntime / 10 * 20, 20)
   
   // Criticality factor (0-10 points)
   const criticalityMap: Record<string, number> = {
+    Critical: 10,
+    High: 7,
+    Medium: 4,
+    Low: 1,
+    // Support lowercase for backward compatibility
     critical: 10,
     high: 7,
     medium: 4,
@@ -146,7 +154,7 @@ export function calculateMTBFMTTR(
   totalDowntimeHours: number
   failureCount: number
 } {
-  const unplannedEvents = downtimeEvents.filter((d) => d.type === 'unplanned' && d.duration_minutes)
+  const unplannedEvents = downtimeEvents.filter((d) => d.type === 'Unplanned' && d.duration_minutes)
   
   if (unplannedEvents.length === 0) {
     return {

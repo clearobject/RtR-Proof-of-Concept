@@ -40,13 +40,15 @@ The `/ai` route exposes a conversational assistant that summarizes plant perform
    OPENAI_API_KEY=sk-...
    # Optional override – defaults to gpt-4o-mini if unset
    OPENAI_MODEL=gpt-4o-mini
+   # Required for grounding responses with Supabase factory data
+    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
    ```
 
 2. Restart the Next.js dev server after updating environment variables.
 
 3. In production, ensure the key is stored securely (e.g., Vercel env vars) and never exposed to the client. The API route proxies all requests and redacts error details from end users.
 
-4. Tailor the assistant by extending the system prompt in `app/api/ai/chat/route.ts` with plant-specific context or data source instructions.
+4. Tailor the assistant by extending the system prompt in `app/api/ai/chat/route.ts` with plant-specific context or data source instructions, or by enriching the Supabase grounding queries to include additional metrics.
 
 ## Demo Seed Dataset
 

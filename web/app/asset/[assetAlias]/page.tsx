@@ -77,9 +77,9 @@ export default async function MachinePage({
     data: machine,
     error: machineError,
   } = await supabase
-    .from('machines')
+    .from('assets')
     .select('*')
-    .eq('asset_alias', assetAlias)
+    .eq('alias', assetAlias)
     .maybeSingle<MachinesRow>()
 
   if (machineError) {
@@ -94,21 +94,21 @@ export default async function MachinePage({
     supabase
       .from('alerts')
       .select('id,severity,message,acknowledged,created_at')
-      .eq('machine_id', machine.id)
+      .eq('asset_id', machine.id)
       .order('created_at', { ascending: false })
       .limit(5)
       .returns<AlertRow[]>(),
     supabase
       .from('maintenance_tickets')
       .select('id,title,status,priority,created_at')
-      .eq('machine_id', machine.id)
+      .eq('asset_id', machine.id)
       .order('created_at', { ascending: false })
       .limit(5)
       .returns<MaintenanceTicketRow[]>(),
     supabase
       .from('sensor_data')
       .select('id,timestamp,temperature,vibration,power,humidity')
-      .eq('machine_id', machine.id)
+      .eq('asset_id', machine.id)
       .order('timestamp', { ascending: false })
       .limit(10)
       .returns<SensorDataRow[]>(),

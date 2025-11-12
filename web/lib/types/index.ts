@@ -24,7 +24,7 @@ export interface Machine {
   type: string // washer, dryer, dry_cleaner, etc.
   zone: string // Inbound, Tagging, Wet Cleaning, etc.
   facility_id: string
-  status: 'operational' | 'warning' | 'critical' | 'maintenance' | 'offline'
+  status: 'Active' | 'Warning' | 'Critical' | 'Maintenance' | 'Offline'
   coordinates?: { x: number; y: number }
   manufacturer?: string
   model?: string
@@ -35,7 +35,7 @@ export interface Machine {
 
 export interface SensorData {
   id: string
-  machine_id: string
+  asset_id: string
   timestamp: string
   temperature?: number
   vibration?: number
@@ -47,8 +47,8 @@ export interface SensorData {
 
 export interface Alert {
   id: string
-  machine_id: string
-  severity: 'low' | 'medium' | 'high' | 'critical'
+  asset_id: string
+  severity: 'Low' | 'Medium' | 'High' | 'Critical'
   message: string
   acknowledged: boolean
   acknowledged_by?: string
@@ -58,13 +58,12 @@ export interface Alert {
 
 export interface MaintenanceTicket {
   id: string
-  machine_id?: string
-  asset_id?: string
+  asset_id: string
   alert_id?: string
   title: string
   description: string
-  status: 'open' | 'in_progress' | 'resolved' | 'closed'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status: 'Open' | 'In_progress' | 'Resolved' | 'Closed'
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent'
   assigned_to?: string
   created_by: string
   created_at: string
@@ -84,8 +83,9 @@ export interface Asset {
   zone?: string
   in_service_date: string
   expected_life_years?: number
-  criticality: 'low' | 'medium' | 'high' | 'critical'
-  status: 'active' | 'maintenance' | 'retired'
+  criticality: 'Low' | 'Medium' | 'High' | 'Critical'
+  status: 'Active' | 'Maintenance' | 'Retired' | 'Warning' | 'Critical' | 'Offline'
+  coordinates?: { x: number; y: number }
   created_at: string
   updated_at: string
 }
@@ -93,11 +93,10 @@ export interface Asset {
 export interface DowntimeEvent {
   id: string
   asset_id: string
-  machine_id?: string
   start_time: string
   end_time?: string
   duration_minutes?: number
-  type: 'planned' | 'unplanned'
+  type: 'Planned' | 'Unplanned'
   cause?: string
   impact?: string
   created_at: string

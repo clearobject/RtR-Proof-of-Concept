@@ -23,19 +23,19 @@ const hexToRgba = (hex: string, alpha: number) => {
 }
 
 const STATUS_ORDER: Machine['status'][] = [
-  'operational',
-  'warning',
-  'critical',
-  'maintenance',
-  'offline',
+  'Active',
+  'Warning',
+  'Critical',
+  'Maintenance',
+  'Offline',
 ]
 
 const STATUS_LABELS: Record<Machine['status'], string> = {
-  operational: 'Operational',
-  warning: 'Warning',
-  critical: 'Critical',
-  maintenance: 'Maintenance',
-  offline: 'Offline',
+  Active: 'Active',
+  Warning: 'Warning',
+  Critical: 'Critical',
+  Maintenance: 'Maintenance',
+  Offline: 'Offline',
 }
 const STATUS_FILTER_OPTIONS = STATUS_ORDER.map((status) => ({
   value: status,
@@ -51,10 +51,10 @@ const severityOrder: Record<string, number> = {
 }
 
 const severityToStatus: Record<string, Machine['status']> = {
-  critical: 'critical',
-  high: 'warning',
-  medium: 'maintenance',
-  low: 'operational',
+  Critical: 'Critical',
+  High: 'Warning',
+  Medium: 'Maintenance',
+  Low: 'Active',
 }
 
 type DisplayMachine = Machine & {
@@ -123,13 +123,29 @@ export function FactoryMap() {
         setLoadingSupabase(true)
         const supabase = createClient()
 
-        const [{ data: machineData }, { data: alertData }] = await Promise.all([
-          supabase.from('machines').select('*').order('name'),
+        const [{ data: assetData }, { data: alertData }] = await Promise.all([
+          supabase.from('assets').select('*').order('name'),
           supabase.from('alerts').select('*').eq('acknowledged', false),
         ])
 
-        if (machineData && machineData.length > 0 && isMounted) {
-          setMachines(machineData as Machine[])
+        if (assetData && assetData.length > 0 && isMounted) {
+          // Map assets to Machine format for compatibility with existing components
+          const mappedMachines = assetData.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            asset_alias: item.alias || item.asset_alias,
+            type: item.type,
+            zone: item.zone,
+            facility_id: item.facility_id,
+            status: item.status || 'operational',
+            coordinates: item.coordinates,
+            manufacturer: item.manufacturer,
+            model: item.model,
+            serial_number: item.serial_number,
+            created_at: item.created_at,
+            updated_at: item.updated_at,
+          }))
+          setMachines(mappedMachines as Machine[])
         }
 
         if (alertData && isMounted) {
@@ -154,10 +170,12 @@ export function FactoryMap() {
   const alertSeverityMap = useMemo(() => {
     const map = new Map<string, string>()
     alerts.forEach((alert) => {
-      if (!alert.machine_id) return
-      const current = map.get(alert.machine_id)
+      // Alerts now use asset_id (machines table has been merged into assets)
+      const assetId = (alert as any).asset_id
+      if (!assetId) return
+      const current = map.get(assetId)
       if (!current || severityOrder[alert.severity] > severityOrder[current]) {
-        map.set(alert.machine_id, alert.severity)
+        map.set(assetId, alert.severity)
       }
     })
     return map
@@ -167,7 +185,7 @@ export function FactoryMap() {
     return machines.map((machine) => {
       const severity = alertSeverityMap.get(machine.id)
       const derivedStatus =
-        machine.status === 'offline' || machine.status === 'critical'
+        machine.status === 'Offline' || machine.status === 'Critical'
           ? machine.status
           : severity
             ? severityToStatus[severity] ?? machine.status

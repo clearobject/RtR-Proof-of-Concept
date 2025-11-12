@@ -19,6 +19,7 @@ export function formatDateTime(date: string | Date): string {
 }
 
 export function getStatusColor(status: string): string {
+  const normalizedStatus = status.toLowerCase()
   const colors: Record<string, string> = {
     operational: 'bg-green-500',
     warning: 'bg-yellow-500',
@@ -26,23 +27,33 @@ export function getStatusColor(status: string): string {
     maintenance: 'bg-blue-500',
     offline: 'bg-gray-500',
     open: 'bg-red-500',
-    in_progress: 'bg-yellow-500',
+    'in_progress': 'bg-yellow-500',
     resolved: 'bg-green-500',
     closed: 'bg-gray-500',
     active: 'bg-green-500',
     retired: 'bg-gray-500',
   }
-  return colors[status] || 'bg-gray-500'
+  return colors[normalizedStatus] || 'bg-gray-500'
+}
+
+export function formatStatus(status: string): string {
+  // Handle underscores in status values
+  return status.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
 export function getSeverityColor(severity: string): string {
+  const normalizedSeverity = severity.toLowerCase()
   const colors: Record<string, string> = {
     low: 'bg-blue-500',
     medium: 'bg-yellow-500',
     high: 'bg-orange-500',
     critical: 'bg-red-500',
   }
-  return colors[severity] || 'bg-gray-500'
+  return colors[normalizedSeverity] || 'bg-gray-500'
+}
+
+export function formatCriticality(criticality: string): string {
+  return criticality.charAt(0).toUpperCase() + criticality.slice(1).toLowerCase()
 }
 
 export function getSentimentColor(score: number): string {

@@ -38,8 +38,8 @@ export default function FactoryOverview() {
 
     const fetchStatuses = async () => {
       const { data, error } = await supabase
-        .from('machines')
-        .select('asset_alias,name,status,current_alert_summary')
+        .from('assets')
+        .select('alias,name,status')
 
       if (error) {
         console.error('Failed to fetch machine status from Supabase', error)
@@ -52,10 +52,10 @@ export default function FactoryOverview() {
 
       data.forEach((row) => {
         const status = (row.status ?? 'not_running') as MachineHealthStatus
-        normalized[row.asset_alias] = {
+        normalized[row.alias] = {
           name: row.name ?? null,
           status,
-          currentAlertSummary: row.current_alert_summary ?? null,
+          currentAlertSummary: null, // Can be fetched from alerts if needed
         }
       })
 

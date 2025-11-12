@@ -31,7 +31,7 @@ export function FactoryDashboard() {
 
       // Build query
       let machinesQuery = supabase
-        .from('machines')
+        .from('assets')
         .select('*')
         .order('name')
 
@@ -73,11 +73,11 @@ export function FactoryDashboard() {
 
   const machineTypes = ['washer', 'dryer', 'dry_cleaner']
   const statuses: Machine['status'][] = [
-    'operational',
-    'warning',
-    'critical',
-    'maintenance',
-    'offline',
+    'Active',
+    'Warning',
+    'Critical',
+    'Maintenance',
+    'Offline',
   ]
   const zones = [
     'Inbound',
@@ -89,12 +89,15 @@ export function FactoryDashboard() {
     'Bagging',
   ]
 
+  // Filter alerts to only unacknowledged ones
+  const unacknowledgedAlerts = alerts.filter((a) => !a.acknowledged)
+  
   const stats = {
     total: machines.length,
-    operational: machines.filter((m) => m.status === 'operational').length,
-    warning: machines.filter((m) => m.status === 'warning').length,
-    critical: machines.filter((m) => m.status === 'critical').length,
-    alerts: alerts.length,
+    operational: machines.filter((m) => m.status === 'Active').length,
+    warning: machines.filter((m) => m.status === 'Warning').length,
+    critical: machines.filter((m) => m.status === 'Critical').length,
+    alerts: unacknowledgedAlerts.length,
   }
 
   if (loading) {

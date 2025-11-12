@@ -43,11 +43,18 @@ export default function AiInsightsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const endOfMessagesRef = useRef<HTMLDivElement | null>(null)
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
-    endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const container = messagesContainerRef.current
+
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth',
+      })
+    }
   }, [messages, isSubmitting])
 
   const payloadHistory = useMemo<ApiMessage[]>(() => {
@@ -137,7 +144,7 @@ export default function AiInsightsPage() {
           </p>
         </header>
 
-        <Card className="flex flex-1 flex-col overflow-hidden border-rtr-wine/10 shadow-lg">
+        <Card className="flex flex-1 flex-col overflow-hidden border-rtr-wine/10 shadow-lg min-h-[620px] max-h-[calc(100vh-220px)]">
           <CardHeader className="flex-none">
             <CardTitle className="flex items-center gap-2 text-2xl text-rtr-ink">
               <Sparkles className="h-6 w-6 text-rtr-wine" />
@@ -149,7 +156,10 @@ export default function AiInsightsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col gap-4">
-            <div className="flex flex-1 flex-col space-y-4 overflow-y-auto rounded-xl border border-rtr-border/70 bg-white/70 p-4 shadow-inner">
+            <div
+              ref={messagesContainerRef}
+              className="flex flex-1 flex-col space-y-4 overflow-y-auto rounded-xl border border-rtr-border/70 bg-white/70 p-4 shadow-inner"
+            >
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -179,8 +189,6 @@ export default function AiInsightsPage() {
                   </div>
                 </div>
               )}
-
-              <div ref={endOfMessagesRef} />
             </div>
 
             {error && (

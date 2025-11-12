@@ -42,9 +42,14 @@ export default function MaintenancePage() {
     try {
       const supabase = createClient()
 
+      // Build query with joins to avoid N+1 queries
       let ticketsQuery = supabase
         .from('maintenance_tickets')
-        .select('*')
+        .select(`
+          *,
+          assets (*),
+          alerts (*)
+        `)
         .order('created_at', { ascending: false })
 
       if (filter.status) {
@@ -57,39 +62,52 @@ export default function MaintenancePage() {
         ticketsQuery = ticketsQuery.ilike('title', `%${filter.search}%`)
       }
 
-      const [ticketsResult, machinesResult] = await Promise.all([
+      const [ticketsResult, assetsResult] = await Promise.all([
         ticketsQuery,
-        supabase.from('machines').select('id, name').order('name'),
+        supabase.from('assets').select('id, name').order('name'),
       ])
 
       if (ticketsResult.data) {
-        // Load machine and assigned user details for each ticket
-        const ticketsWithDetails = await Promise.all(
-          ticketsResult.data.map(async (ticket: any) => {
-            const [machineResult, userResult, alertResult] = await Promise.all([
-              ticket.machine_id
-                ? supabase.from('machines').select('*').eq('id', ticket.machine_id).single()
-                : Promise.resolve({ data: null }),
-              ticket.assigned_to
-                ? supabase.from('user_profiles').select('email, role').eq('id', ticket.assigned_to).single()
-                : Promise.resolve({ data: null }),
-              ticket.alert_id
-                ? supabase.from('alerts').select('*').eq('id', ticket.alert_id).maybeSingle()
-                : Promise.resolve({ data: null }),
-            ])
+        // Collect all unique assigned_to user IDs
+        const assignedUserIds = [
+          ...new Set(
+            ticketsResult.data
+              .map((t: any) => t.assigned_to)
+              .filter((id: string | null) => id !== null)
+          ),
+        ] as string[]
 
-            return {
-              ...ticket,
-              machine: machineResult.data || null,
-              assigned_user: userResult.data || null,
-              alert: alertResult.data || null,
-            }
-          })
-        )
+        // Batch fetch all user profiles in one query
+        let userProfilesMap = new Map<string, { email: string; role: string }>()
+        if (assignedUserIds.length > 0) {
+          const { data: userProfiles } = await supabase
+            .from('user_profiles')
+            .select('id, email, role')
+            .in('id', assignedUserIds)
+
+          if (userProfiles) {
+            userProfiles.forEach((profile) => {
+              userProfilesMap.set(profile.id, {
+                email: profile.email,
+                role: profile.role,
+              })
+            })
+          }
+        }
+
+        // Transform the data to match the expected structure
+        const ticketsWithDetails = ticketsResult.data.map((ticket: any) => ({
+          ...ticket,
+          machine: ticket.assets || null,
+          assigned_user: ticket.assigned_to
+            ? userProfilesMap.get(ticket.assigned_to) || null
+            : null,
+          alert: ticket.alerts || null,
+        }))
         setTickets(ticketsWithDetails)
       }
-      if (machinesResult.data) {
-        setMachines(machinesResult.data as Machine[])
+      if (assetsResult.data) {
+        setMachines(assetsResult.data as Machine[])
       }
     } catch (error) {
       console.error('Error loading data:', error)
@@ -106,26 +124,38 @@ export default function MaintenancePage() {
         data: { user },
       } = await supabase.auth.getUser()
 
-      if (!user) return
-
-      const { error } = await supabase.from('maintenance_tickets').insert({
-        ...newTicket,
-        status: 'open',
-        created_by: user.id,
-      })
-
-      if (!error) {
-        setShowCreateForm(false)
-        setNewTicket({
-          machine_id: '',
-          title: '',
-          description: '',
-          priority: 'medium',
-        })
-        loadData()
+      if (!user) {
+        alert('You must be logged in to create a ticket')
+        return
       }
+
+      const { data, error } = await supabase.from('maintenance_tickets').insert({
+        asset_id: newTicket.machine_id, // Note: machine_id is actually asset_id in the form
+        title: newTicket.title,
+        description: newTicket.description,
+        priority: newTicket.priority,
+        status: 'Open',
+        created_by: user.id,
+      }).select()
+
+      if (error) {
+        console.error('Error creating ticket:', error)
+        alert('Error creating ticket: ' + error.message)
+        return
+      }
+
+      // Success - reset form and reload data
+      setShowCreateForm(false)
+      setNewTicket({
+        machine_id: '',
+        title: '',
+        description: '',
+        priority: 'medium',
+      })
+      await loadData()
     } catch (error) {
       console.error('Error creating ticket:', error)
+      alert('Error creating ticket: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
 
@@ -159,9 +189,9 @@ export default function MaintenancePage() {
   }
 
   const stats = {
-    open: tickets.filter((t) => t.status === 'open').length,
-    inProgress: tickets.filter((t) => t.status === 'in_progress').length,
-    resolved: tickets.filter((t) => t.status === 'resolved').length,
+    open: tickets.filter((t) => t.status === 'Open').length,
+    inProgress: tickets.filter((t) => t.status === 'In_progress').length,
+    resolved: tickets.filter((t) => t.status === 'Resolved').length,
     total: tickets.length,
   }
 
@@ -412,12 +442,12 @@ export default function MaintenancePage() {
                           {ticket.machine && (
                             <>
                               <Link
-                                href={`/machines/${ticket.machine.id}`}
+                                href={`/assets/${ticket.machine.id}`}
                                 className="text-blue-600 hover:underline"
                               >
                                 View Machine
                               </Link>
-                              {(ticket.machine.status === 'offline' || ticket.machine.status === 'critical' || ticket.machine.status === 'maintenance') && (
+                              {(ticket.machine.status === 'Offline' || ticket.machine.status === 'Critical' || ticket.machine.status === 'Maintenance') && (
                                 <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-medium">
                                   Out of Service
                                 </span>
@@ -427,32 +457,32 @@ export default function MaintenancePage() {
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">
-                        {ticket.status === 'open' && (
+                        {ticket.status === 'Open' && (
                           <Button
                             size="sm"
                             onClick={() =>
-                              handleUpdateStatus(ticket.id, 'in_progress')
+                              handleUpdateStatus(ticket.id, 'In_progress')
                             }
                           >
                             Start Work
                           </Button>
                         )}
-                        {ticket.status === 'in_progress' && (
+                        {ticket.status === 'In_progress' && (
                           <Button
                             size="sm"
                             onClick={() =>
-                              handleUpdateStatus(ticket.id, 'resolved')
+                              handleUpdateStatus(ticket.id, 'Resolved')
                             }
                           >
                             Mark Resolved
                           </Button>
                         )}
-                        {ticket.status === 'resolved' && (
+                        {ticket.status === 'Resolved' && (
                           <Button
                             size="sm"
                             variant="secondary"
                             onClick={() =>
-                              handleUpdateStatus(ticket.id, 'closed')
+                              handleUpdateStatus(ticket.id, 'Closed')
                             }
                           >
                             Close
