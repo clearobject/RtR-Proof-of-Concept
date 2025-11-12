@@ -38,8 +38,20 @@ const hexToRgba = (hex: string, alpha: number) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
+const cssEscape = (value: string) => {
+  if (typeof window !== 'undefined' && window.CSS?.escape) {
+    return window.CSS.escape(value)
+  }
+
+  return value.replace(/([^\w-])/g, '\\$1')
+}
+
+interface MachineWithAlert extends Machine {
+  alertSeverity?: string | null
+}
+
 interface FactoryLayoutProps {
-  machines: Machine[]
+  machines: MachineWithAlert[]
   onMachineClick?: (machine: Machine) => void
   onLayoutMachinesChange?: (machines: LayoutMachine[], meta: SvgMeta) => void
 }
@@ -50,7 +62,13 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
   const [svgMarkup, setSvgMarkup] = useState<string | null>(null)
   const [layoutMachines, setLayoutMachines] = useState<LayoutMachine[]>([])
   const [svgMeta, setSvgMeta] = useState<SvgMeta | null>(null)
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [tooltip, setTooltip] = useState<{
+    machine: Machine
+    x: number
+    y: number
+    color: string
+  } | null>(null)
+  const interactionCleanups = useRef<(() => void)[]>([])
 
   useEffect(() => {
     let isMounted = true
@@ -132,7 +150,7 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
   }, [svgMarkup])
 
   const machineLookup = useMemo(() => {
-    const map = new Map<string, Machine>()
+    const map = new Map<string, MachineWithAlert>()
     machines.forEach((machine) => {
       if (machine.asset_alias) {
         map.set(machine.asset_alias, machine)
@@ -142,39 +160,135 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
     return map
   }, [machines])
 
-  const overlays = useMemo(() => {
-    if (!svgMeta) return []
-    return layoutMachines
-      .map((layout) => {
+  useEffect(() => {
+    const cleanupInteractions = () => {
+      interactionCleanups.current.forEach((cleanup) => cleanup())
+      interactionCleanups.current = []
+    }
+
+    const applyInteractivity = () => {
+      const container = containerRef.current
+      if (!container) return
+      const svg = container.querySelector('svg')
+      if (!svg) return
+
+      cleanupInteractions()
+
+      layoutMachines.forEach((layout) => {
+        const selector = `#${cssEscape(layout.id)}`
+        const node = svg.querySelector<SVGGraphicsElement>(selector)
+        if (!node) return
+
         const machine =
           machineLookup.get(layout.id) ||
           machineLookup.get(layout.id.replace(/_/g, '-')) ||
           machineLookup.get(layout.id.replace(/^EWR\./, ''))
 
-        if (!machine) return null
-
-        const left = (layout.bbox.x / svgMeta.width) * 100
-        const top = (layout.bbox.y / svgMeta.height) * 100
-        const width = (layout.bbox.width / svgMeta.width) * 100
-        const height = (layout.bbox.height / svgMeta.height) * 100
-
-        return {
-          layout,
-          machine,
-          style: {
-            left: `${left}%`,
-            top: `${top}%`,
-            width: `${width}%`,
-            height: `${height}%`,
-          },
+        const originalFillAttr = node.getAttribute('data-original-fill')
+        const originalStrokeAttr = node.getAttribute('data-original-stroke')
+        if (!originalFillAttr) {
+          node.setAttribute('data-original-fill', node.getAttribute('fill') ?? '')
         }
+        if (!originalStrokeAttr) {
+          node.setAttribute('data-original-stroke', node.getAttribute('stroke') ?? '')
+        }
+
+        if (!machine) {
+          const originalFill = node.getAttribute('data-original-fill')
+          const originalStroke = node.getAttribute('data-original-stroke')
+          if (originalFill !== null) {
+            if (originalFill === '') node.removeAttribute('fill')
+            else node.setAttribute('fill', originalFill)
+          }
+          if (originalStroke !== null) {
+            if (originalStroke === '') node.removeAttribute('stroke')
+            else node.setAttribute('stroke', originalStroke)
+          }
+          node.removeAttribute('stroke-width')
+          node.style.cursor = ''
+          node.removeAttribute('tabindex')
+          return
+        }
+
+        const statusColor = STATUS_COLORS[machine.status] ?? STATUS_COLORS.unknown
+        node.setAttribute('fill', hexToRgba(statusColor, 0.32))
+        node.setAttribute('stroke', statusColor)
+        node.setAttribute('stroke-width', '3')
+        node.style.cursor = 'pointer'
+        node.setAttribute('tabindex', '0')
+
+        const handleMouseEnter = () => {
+          const svgRect = container.getBoundingClientRect()
+          const nodeRect = node.getBoundingClientRect()
+          const x = nodeRect.left - svgRect.left + nodeRect.width / 2
+          const y = nodeRect.top - svgRect.top - 8
+
+          node.setAttribute('stroke-width', '4')
+          node.setAttribute('fill', hexToRgba(statusColor, 0.45))
+
+          setTooltip({
+            machine,
+            x,
+            y,
+            color: statusColor,
+          })
+        }
+
+        const handleMouseLeave = () => {
+          node.setAttribute('stroke-width', '3')
+          node.setAttribute('fill', hexToRgba(statusColor, 0.32))
+          setTooltip(null)
+        }
+
+        const handleClick = () => {
+          onMachineClick?.(machine)
+          router.push(`/machines/${machine.id}`)
+        }
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            handleClick()
+          }
+        }
+
+        node.addEventListener('mouseenter', handleMouseEnter)
+        node.addEventListener('mouseleave', handleMouseLeave)
+        node.addEventListener('focus', handleMouseEnter)
+        node.addEventListener('blur', handleMouseLeave)
+        node.addEventListener('click', handleClick)
+        node.addEventListener('keydown', handleKeyDown)
+
+        interactionCleanups.current.push(() => {
+          node.removeEventListener('mouseenter', handleMouseEnter)
+          node.removeEventListener('mouseleave', handleMouseLeave)
+          node.removeEventListener('focus', handleMouseEnter)
+          node.removeEventListener('blur', handleMouseLeave)
+          node.removeEventListener('click', handleClick)
+          node.removeEventListener('keydown', handleKeyDown)
+          const originalFill = node.getAttribute('data-original-fill')
+          const originalStroke = node.getAttribute('data-original-stroke')
+          if (originalFill !== null) {
+            if (originalFill === '') node.removeAttribute('fill')
+            else node.setAttribute('fill', originalFill)
+          }
+          if (originalStroke !== null) {
+            if (originalStroke === '') node.removeAttribute('stroke')
+            else node.setAttribute('stroke', originalStroke)
+          }
+          node.removeAttribute('stroke-width')
+          node.style.cursor = ''
+          node.removeAttribute('tabindex')
+        })
       })
-      .filter(Boolean) as {
-      layout: LayoutMachine
-      machine: Machine
-      style: { left: string; top: string; width: string; height: string }
-    }[]
-  }, [layoutMachines, machineLookup, svgMeta])
+    }
+
+    applyInteractivity()
+
+    return () => {
+      cleanupInteractions()
+    }
+  }, [layoutMachines, machineLookup, onMachineClick, router, svgMarkup])
 
   return (
     <div className="relative w-full rounded-xl border border-rtr-border bg-white">
@@ -184,61 +298,38 @@ export function FactoryLayout({ machines, onMachineClick, onLayoutMachinesChange
           className="relative max-w-full"
           dangerouslySetInnerHTML={svgMarkup ? { __html: svgMarkup } : undefined}
         />
-
-        {svgMarkup && svgMeta && (
-          <div className="pointer-events-none absolute inset-0">
-            {overlays.map(({ layout, machine, style }) => {
-              const statusColor = STATUS_COLORS[machine.status] ?? STATUS_COLORS.unknown
-              const isHovered = hoveredId === layout.id
-              const backgroundColor = hexToRgba(statusColor, isHovered ? 0.4 : 0.22)
-              const borderColor = hexToRgba(statusColor, 0.7)
-              return (
-                <div
-                  key={layout.id}
-                  style={style}
-                  className="pointer-events-none absolute"
-                >
-                  <button
-                    className="pointer-events-auto h-full w-full rounded-md border text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rtr-wine focus-visible:ring-offset-1"
-                    onClick={() => {
-                      onMachineClick?.(machine)
-                      router.push(`/machines/${machine.id}`)
-                    }}
-                    onMouseEnter={() => setHoveredId(layout.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    aria-label={`${machine.name} status ${machine.status}`}
-                    style={{
-                      backgroundColor,
-                      borderColor,
-                      boxShadow: isHovered ? `0 8px 16px ${hexToRgba(statusColor, 0.25)}` : undefined,
-                    }}
-                  >
-                    <span className="sr-only">{machine.name}</span>
-                  </button>
-
-                  {isHovered && (
-                    <div className="pointer-events-none absolute left-1/2 top-0 z-10 w-56 -translate-x-1/2 -translate-y-full rounded-lg border border-rtr-border bg-white p-3 text-xs text-rtr-ink shadow-lg">
-                      <p className="font-medium text-rtr-ink">{machine.name}</p>
-                      <p className="mt-1 text-rtr-slate">
-                        Status:{' '}
-                        <span className="font-medium capitalize text-rtr-ink">{machine.status}</span>
-                      </p>
-                      {machine.zone && (
-                        <p className="text-rtr-slate">
-                          Zone: <span className="font-medium text-rtr-ink">{machine.zone}</span>
-                        </p>
-                      )}
-                      <p className="text-rtr-slate">
-                        Type:{' '}
-                        <span className="font-medium text-rtr-ink">
-                          {machine.type.replace(/_/g, ' ')}
-                        </span>
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+        {tooltip && (
+          <div
+            className="pointer-events-none absolute z-10 w-56 -translate-x-1/2 -translate-y-3 rounded-lg border border-rtr-border bg-white p-3 text-xs text-rtr-ink shadow-lg"
+            style={{
+              left: `${tooltip.x}px`,
+              top: `${Math.max(tooltip.y, 16)}px`,
+            }}
+          >
+            <p className="font-medium text-rtr-ink">{tooltip.machine.name}</p>
+            <p className="mt-1 text-rtr-slate">
+              Status:{' '}
+              <span className="font-medium capitalize text-rtr-ink">{tooltip.machine.status}</span>
+            </p>
+            {tooltip.machine.zone && (
+              <p className="text-rtr-slate">
+                Zone: <span className="font-medium text-rtr-ink">{tooltip.machine.zone}</span>
+              </p>
+            )}
+            <p className="text-rtr-slate">
+              Type:{' '}
+              <span className="font-medium text-rtr-ink">
+                {tooltip.machine.type.replace(/_/g, ' ')}
+              </span>
+            </p>
+            {tooltip.machine.alertSeverity && (
+              <p className="mt-1 text-rtr-slate">
+                Active Alert:{' '}
+                <span className="font-semibold uppercase" style={{ color: tooltip.color }}>
+                  {tooltip.machine.alertSeverity}
+                </span>
+              </p>
+            )}
           </div>
         )}
       </div>
