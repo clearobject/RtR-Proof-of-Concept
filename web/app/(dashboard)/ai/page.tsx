@@ -124,9 +124,9 @@ export default function AiInsightsPage() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-gradient-to-b from-rtr-cream via-rtr-cream to-rtr-blush/30 p-8">
-      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6">
-        <header className="flex flex-col gap-3">
+    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-b from-rtr-cream via-rtr-cream to-rtr-blush/30">
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 overflow-hidden p-8">
+        <header className="flex flex-shrink-0 flex-col gap-3">
           <div className="flex items-center gap-2 text-rtr-wine">
             <Sparkles className="h-5 w-5" />
             <span className="text-sm font-semibold uppercase tracking-wide">
@@ -136,7 +136,7 @@ export default function AiInsightsPage() {
           <h1 className="text-3xl font-semibold tracking-tight text-rtr-ink">
             RTR Insight Assistant
           </h1>
-          <p className="max-w-3xl text-base text-rtr-slate">
+          <p className="w-full text-base text-rtr-slate">
             Discover performance drivers across the Secaucus operation with a conversational
             interface. Ask about throughput, quality, labor utilization, SLA risk, or any metric you
             would track on the factory floor. RTR Insight will synthesize data, call out trends, and
@@ -144,8 +144,8 @@ export default function AiInsightsPage() {
           </p>
         </header>
 
-        <Card className="flex flex-1 flex-col overflow-hidden border-rtr-wine/10 shadow-lg min-h-[620px] max-h-[calc(100vh-220px)]">
-          <CardHeader className="flex-none">
+        <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-rtr-wine/10 shadow-lg">
+          <CardHeader className="flex-shrink-0">
             <CardTitle className="flex items-center gap-2 text-2xl text-rtr-ink">
               <Sparkles className="h-6 w-6 text-rtr-wine" />
               Ask the Plant Co-Pilot
@@ -155,10 +155,10 @@ export default function AiInsightsPage() {
               providers.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-1 flex-col gap-4">
+          <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
             <div
               ref={messagesContainerRef}
-              className="flex flex-1 flex-col space-y-4 overflow-y-auto rounded-xl border border-rtr-border/70 bg-white/70 p-4 shadow-inner"
+              className="flex min-h-0 flex-1 flex-col space-y-4 overflow-y-auto rounded-xl border border-rtr-border/70 bg-white/70 p-4 shadow-inner"
             >
               {messages.map((message) => (
                 <div
@@ -192,12 +192,12 @@ export default function AiInsightsPage() {
             </div>
 
             {error && (
-              <div className="rounded-lg border border-rtr-danger/40 bg-rtr-danger/10 px-4 py-3 text-sm text-rtr-danger">
+              <div className="flex-shrink-0 rounded-lg border border-rtr-danger/40 bg-rtr-danger/10 px-4 py-3 text-sm text-rtr-danger">
                 {error}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <form onSubmit={handleSubmit} className="flex flex-shrink-0 flex-col gap-3">
               <div className="flex items-end gap-3">
                 <label className="sr-only" htmlFor="ai-question">
                   Ask RTR Insight
