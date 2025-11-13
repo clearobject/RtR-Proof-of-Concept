@@ -6,13 +6,14 @@
 DO $$ 
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'invite_tokens') THEN
+    -- Create table without facility_id foreign key first (in case facilities table doesn't exist yet)
     CREATE TABLE invite_tokens (
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
       token TEXT NOT NULL UNIQUE,
       created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
       email TEXT, -- Optional: pre-fill email for invite
       role TEXT NOT NULL DEFAULT 'operator' CHECK (role IN ('operator', 'maintenance', 'manager', 'admin')),
-      facility_id UUID REFERENCES facilities(id),
+      facility_id UUID, -- Will add foreign key constraint separately if facilities table exists
       expires_at TIMESTAMPTZ NOT NULL,
       used_at TIMESTAMPTZ,
       used_by UUID REFERENCES auth.users(id),
@@ -22,6 +23,13 @@ BEGIN
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
 
+    -- Add foreign key constraint to facilities if the table exists
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'facilities') THEN
+      ALTER TABLE invite_tokens 
+        ADD CONSTRAINT invite_tokens_facility_id_fkey 
+        FOREIGN KEY (facility_id) REFERENCES facilities(id);
+    END IF;
+
     -- Indexes for performance
     CREATE INDEX IF NOT EXISTS idx_invite_tokens_token ON invite_tokens(token);
     CREATE INDEX IF NOT EXISTS idx_invite_tokens_created_by ON invite_tokens(created_by);
@@ -29,146 +37,177 @@ BEGIN
 
     -- Enable RLS
     ALTER TABLE invite_tokens ENABLE ROW LEVEL SECURITY;
+  ELSE
+    -- Table exists, but check if we need to add the foreign key constraint
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'facilities') THEN
+      -- Check if the foreign key constraint already exists
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'invite_tokens_facility_id_fkey'
+        AND conrelid = 'invite_tokens'::regclass
+      ) THEN
+        ALTER TABLE invite_tokens 
+          ADD CONSTRAINT invite_tokens_facility_id_fkey 
+          FOREIGN KEY (facility_id) REFERENCES facilities(id);
+      END IF;
+    END IF;
   END IF;
 END $$;
 
 -- RLS Policies for invite_tokens
 DO $$
 BEGIN
-  -- Admins and managers can create invites
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies 
-    WHERE schemaname = 'public' 
-    AND tablename = 'invite_tokens' 
-    AND policyname = 'Admins and managers can create invites'
-  ) THEN
-    CREATE POLICY "Admins and managers can create invites" ON invite_tokens
-      FOR INSERT WITH CHECK (
-        auth.role() = 'authenticated' AND
-        EXISTS (
-          SELECT 1 FROM user_profiles
-          WHERE id = auth.uid() AND role IN ('admin', 'manager')
-        )
-      );
-  END IF;
+  -- Only create policies if invite_tokens table exists
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'invite_tokens') THEN
+    -- Allow anyone to view invite tokens by token value (for invite acceptance page)
+    -- This policy doesn't depend on user_profiles, so it can always be created
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies 
+      WHERE schemaname = 'public' 
+      AND tablename = 'invite_tokens' 
+      AND policyname = 'Anyone can view invite by token'
+    ) THEN
+      CREATE POLICY "Anyone can view invite by token" ON invite_tokens
+        FOR SELECT USING (true);
+    END IF;
 
-  -- Admins and managers can view all invites
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies 
-    WHERE schemaname = 'public' 
-    AND tablename = 'invite_tokens' 
-    AND policyname = 'Admins and managers can view invites'
-  ) THEN
-    CREATE POLICY "Admins and managers can view invites" ON invite_tokens
-      FOR SELECT USING (
-        auth.role() = 'authenticated' AND
-        EXISTS (
-          SELECT 1 FROM user_profiles
-          WHERE id = auth.uid() AND role IN ('admin', 'manager')
-        )
-      );
-  END IF;
+    -- Policies that reference user_profiles - only create if user_profiles exists
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'user_profiles') THEN
+      -- Admins and managers can create invites
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'public' 
+        AND tablename = 'invite_tokens' 
+        AND policyname = 'Admins and managers can create invites'
+      ) THEN
+        CREATE POLICY "Admins and managers can create invites" ON invite_tokens
+          FOR INSERT WITH CHECK (
+            auth.role() = 'authenticated' AND
+            EXISTS (
+              SELECT 1 FROM user_profiles
+              WHERE id = auth.uid() AND role IN ('admin', 'manager')
+            )
+          );
+      END IF;
 
-  -- Allow anyone to view invite tokens by token value (for invite acceptance page)
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies 
-    WHERE schemaname = 'public' 
-    AND tablename = 'invite_tokens' 
-    AND policyname = 'Anyone can view invite by token'
-  ) THEN
-    CREATE POLICY "Anyone can view invite by token" ON invite_tokens
-      FOR SELECT USING (true);
-  END IF;
+      -- Admins and managers can view all invites
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'public' 
+        AND tablename = 'invite_tokens' 
+        AND policyname = 'Admins and managers can view invites'
+      ) THEN
+        CREATE POLICY "Admins and managers can view invites" ON invite_tokens
+          FOR SELECT USING (
+            auth.role() = 'authenticated' AND
+            EXISTS (
+              SELECT 1 FROM user_profiles
+              WHERE id = auth.uid() AND role IN ('admin', 'manager')
+            )
+          );
+      END IF;
 
-  -- Allow updates for invite acceptance (unauthenticated users can mark invites as used)
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies 
-    WHERE schemaname = 'public' 
-    AND tablename = 'invite_tokens' 
-    AND policyname = 'Allow invite token updates'
-  ) THEN
-    CREATE POLICY "Allow invite token updates" ON invite_tokens
-      FOR UPDATE USING (
-        -- Allow if authenticated and admin/manager
-        (auth.role() = 'authenticated' AND
-         EXISTS (
-           SELECT 1 FROM user_profiles
-           WHERE id = auth.uid() AND role IN ('admin', 'manager')
-         ))
-        OR
-        -- Allow if token is valid (not expired, not maxed out)
-        (expires_at > NOW() AND current_uses < max_uses)
-      );
+      -- Allow updates for invite acceptance (unauthenticated users can mark invites as used)
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'public' 
+        AND tablename = 'invite_tokens' 
+        AND policyname = 'Allow invite token updates'
+      ) THEN
+        CREATE POLICY "Allow invite token updates" ON invite_tokens
+          FOR UPDATE USING (
+            -- Allow if authenticated and admin/manager
+            (auth.role() = 'authenticated' AND
+             EXISTS (
+               SELECT 1 FROM user_profiles
+               WHERE id = auth.uid() AND role IN ('admin', 'manager')
+             ))
+            OR
+            -- Allow if token is valid (not expired, not maxed out)
+            (expires_at > NOW() AND current_uses < max_uses)
+          );
+      END IF;
+    END IF;
   END IF;
 
   -- Update RLS policies for user_profiles to allow admins/managers to manage users
-  -- Admins can view all user profiles
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies 
-    WHERE schemaname = 'public' 
-    AND tablename = 'user_profiles' 
-    AND policyname = 'Admins can view all profiles'
-  ) THEN
-    CREATE POLICY "Admins can view all profiles" ON user_profiles
-      FOR SELECT USING (
-        auth.role() = 'authenticated' AND
-        EXISTS (
-          SELECT 1 FROM user_profiles
-          WHERE id = auth.uid() AND role IN ('admin', 'manager')
-        )
-      );
-  END IF;
+  -- Only create these if user_profiles table exists
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'user_profiles') THEN
+    -- Admins can view all user profiles
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies 
+      WHERE schemaname = 'public' 
+      AND tablename = 'user_profiles' 
+      AND policyname = 'Admins can view all profiles'
+    ) THEN
+      CREATE POLICY "Admins can view all profiles" ON user_profiles
+        FOR SELECT USING (
+          auth.role() = 'authenticated' AND
+          EXISTS (
+            SELECT 1 FROM user_profiles
+            WHERE id = auth.uid() AND role IN ('admin', 'manager')
+          )
+        );
+    END IF;
 
-  -- Admins can update user profiles
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies 
-    WHERE schemaname = 'public' 
-    AND tablename = 'user_profiles' 
-    AND policyname = 'Admins can update profiles'
-  ) THEN
-    CREATE POLICY "Admins can update profiles" ON user_profiles
-      FOR UPDATE USING (
-        auth.role() = 'authenticated' AND
-        EXISTS (
-          SELECT 1 FROM user_profiles
-          WHERE id = auth.uid() AND role IN ('admin', 'manager')
-        )
-      );
-  END IF;
+    -- Admins can update user profiles
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies 
+      WHERE schemaname = 'public' 
+      AND tablename = 'user_profiles' 
+      AND policyname = 'Admins can update profiles'
+    ) THEN
+      CREATE POLICY "Admins can update profiles" ON user_profiles
+        FOR UPDATE USING (
+          auth.role() = 'authenticated' AND
+          EXISTS (
+            SELECT 1 FROM user_profiles
+            WHERE id = auth.uid() AND role IN ('admin', 'manager')
+          )
+        );
+    END IF;
 
-  -- Admins can delete user profiles (cascade will handle auth.users deletion)
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies 
-    WHERE schemaname = 'public' 
-    AND tablename = 'user_profiles' 
-    AND policyname = 'Admins can delete profiles'
-  ) THEN
-    CREATE POLICY "Admins can delete profiles" ON user_profiles
-      FOR DELETE USING (
-        auth.role() = 'authenticated' AND
-        EXISTS (
-          SELECT 1 FROM user_profiles
-          WHERE id = auth.uid() AND role = 'admin'
-        )
-      );
-  END IF;
+    -- Admins can delete user profiles (cascade will handle auth.users deletion)
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies 
+      WHERE schemaname = 'public' 
+      AND tablename = 'user_profiles' 
+      AND policyname = 'Admins can delete profiles'
+    ) THEN
+      CREATE POLICY "Admins can delete profiles" ON user_profiles
+        FOR DELETE USING (
+          auth.role() = 'authenticated' AND
+          EXISTS (
+            SELECT 1 FROM user_profiles
+            WHERE id = auth.uid() AND role = 'admin'
+          )
+        );
+    END IF;
 
-  -- Allow users to insert their own profile (for invite acceptance)
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies 
-    WHERE schemaname = 'public' 
-    AND tablename = 'user_profiles' 
-    AND policyname = 'Users can insert own profile'
-  ) THEN
-    CREATE POLICY "Users can insert own profile" ON user_profiles
-      FOR INSERT WITH CHECK (auth.uid() = id);
+    -- Allow users to insert their own profile (for invite acceptance)
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies 
+      WHERE schemaname = 'public' 
+      AND tablename = 'user_profiles' 
+      AND policyname = 'Users can insert own profile'
+    ) THEN
+      CREATE POLICY "Users can insert own profile" ON user_profiles
+        FOR INSERT WITH CHECK (auth.uid() = id);
+    END IF;
   END IF;
 END $$;
 
 -- Trigger for updated_at
-DROP TRIGGER IF EXISTS update_invite_tokens_updated_at ON invite_tokens;
-CREATE TRIGGER update_invite_tokens_updated_at BEFORE UPDATE ON invite_tokens
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'invite_tokens') THEN
+    IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'update_updated_at_column' AND pronamespace = 'public'::regnamespace) THEN
+      DROP TRIGGER IF EXISTS update_invite_tokens_updated_at ON invite_tokens;
+      CREATE TRIGGER update_invite_tokens_updated_at BEFORE UPDATE ON invite_tokens
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+  END IF;
+END $$;
 
 -- Function to generate secure invite tokens
 CREATE OR REPLACE FUNCTION generate_invite_token()
