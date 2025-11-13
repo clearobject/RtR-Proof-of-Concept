@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rent the Runway Operations",
+  title: "Operations Portal", // Temporarily changed for demo
   description: "Operations portal for factory management and asset tracking",
 };
 

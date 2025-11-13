@@ -102,20 +102,21 @@ export default async function DashboardLayout({
       {/* Sidebar */}
       <aside className="w-72 bg-rtr-wine border-r border-rtr-wine-light flex flex-col flex-shrink-0">
         <div className="p-6 border-b border-rtr-wine-light/20 flex flex-col items-center text-center space-y-3">
-          <Image
+          {/* Temporarily hidden for demo */}
+          {/* <Image
             src="/images/rtr-logo.png"
             alt="Rent the Runway logo"
             width={120}
             height={160}
             priority
             className="w-28 h-auto"
-          />
-          <h1
+          /> */}
+          {/* <h1
             className="text-xl font-semibold tracking-wide text-white"
             style={{ color: '#ffffff' }}
           >
             Rent the Runway
-          </h1>
+          </h1> */}
         </div>
         <nav className="flex-1 p-4 space-y-1">
           {navItems.map((item) => (

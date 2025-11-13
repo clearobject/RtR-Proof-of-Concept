@@ -136,7 +136,7 @@ export default function InviteAcceptancePage() {
             Accept Invitation
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Create your account to join Rent the Runway Operations
+            Create your account to join the Operations Portal
           </p>
           {invite && (
             <p className="mt-1 text-center text-xs text-gray-500">
