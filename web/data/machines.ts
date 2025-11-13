@@ -188,10 +188,10 @@ const mapStatus = (status: string, outOfService: string): Machine['status'] => {
   const base = normalizeValue(status).toLowerCase()
   const oos = normalizeValue(outOfService).toLowerCase()
 
-  if (oos === 'yes') return 'offline'
-  if (base === 'active') return 'operational'
-  if (base === 'inactive') return 'maintenance'
-  return 'maintenance'
+  if (oos === 'yes') return 'Offline'
+  if (base === 'active') return 'Active'
+  if (base === 'inactive') return 'Maintenance'
+  return 'Maintenance'
 }
 
 const toIsoDate = (value: string) => {
