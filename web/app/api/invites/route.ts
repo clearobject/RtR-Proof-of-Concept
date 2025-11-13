@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 // GET /api/invites - List all invites (admin/manager only)
@@ -79,8 +80,23 @@ export async function POST(request: Request) {
       const expiresAt = new Date()
       expiresAt.setDate(expiresAt.getDate() + expires_in_days)
 
-      // Create invite
-      const { data: invite, error } = await supabase
+      // Use service role client to bypass RLS for this insert
+      // We've already verified the user is admin/manager above
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      
+      if (!supabaseUrl || !supabaseServiceKey) {
+        return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+      }
+
+      const serviceClient = createServiceClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      })
+
+      const { data: invite, error } = await serviceClient
         .from('invite_tokens')
         .insert({
           token,
@@ -108,8 +124,23 @@ export async function POST(request: Request) {
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + expires_in_days)
 
-    // Create invite
-    const { data: invite, error } = await supabase
+    // Use service role client to bypass RLS for this insert
+    // We've already verified the user is admin/manager above
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+
+    const serviceClient = createServiceClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+
+    const { data: invite, error } = await serviceClient
       .from('invite_tokens')
       .insert({
         token,

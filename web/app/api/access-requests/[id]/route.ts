@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 
 type AccessRequestAction = 'approve' | 'deny'
 
@@ -9,7 +10,7 @@ function isAuthorizedRole(role?: string | null) {
 }
 
 async function requireAdminContext() {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
 
   const {
     data: { user },
@@ -122,13 +123,30 @@ export async function PATCH(
     const expiresDate = new Date()
     expiresDate.setDate(expiresDate.getDate() + Math.max(1, Math.trunc(expiresIn)))
 
-    const { data: invite, error: inviteError } = await supabase
+    // Use service role client to bypass RLS for this insert
+    // We've already verified the user is admin/manager above
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+
+    const serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+
+    const { data: invite, error: inviteError } = await serviceClient
       .from('invite_tokens')
       .insert({
         token: inviteToken,
         created_by: user.id,
         email: accessRequest.email,
         role: invitedRole,
+        facility_id: null,
         expires_at: expiresDate.toISOString(),
         max_uses: 1,
         current_uses: 0,
