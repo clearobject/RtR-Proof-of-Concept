@@ -63,17 +63,18 @@ export default function InviteAcceptancePage() {
     setSubmitting(true)
 
     try {
-      const response = await fetch(`/api/invites/${token}/accept`, {
+      const response = await fetch(`/api/invites/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
 
-      const data = await response.json()
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to accept invite')
+        const errorData = await response.json().catch(() => ({ error: 'Failed to accept invite' }))
+        throw new Error(errorData.error || 'Failed to accept invite')
       }
+
+      const data = await response.json()
 
       // Sign in the user
       const supabase = createClient()
