@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { createClient as createServerClient } from '@/lib/supabase/server'
 
@@ -34,7 +35,7 @@ async function requireAdminContext() {
   return { supabase, user, role: profile?.role }
 }
 
-async function generateInviteToken(supabase: Awaited<ReturnType<typeof createClient>>) {
+async function generateInviteToken(supabase: SupabaseClient<any>) {
   const { data: rpcToken, error: rpcError } = await supabase.rpc('generate_invite_token')
   if (rpcError || !rpcToken) {
     const crypto = await import('crypto')
