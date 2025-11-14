@@ -161,7 +161,7 @@ export default function JoinRequestPage() {
               />
             </div>
             <div>
-              <Label htmlFor="notes">How will you use the Operations Portal?</Label>
+              <Label htmlFor="notes">How will you use Rent the Runway Ops?</Label>
               <textarea
                 id="notes"
                 className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-rtr-wine focus:outline-none focus:ring-1 focus:ring-rtr-wine"

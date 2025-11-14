@@ -28,7 +28,7 @@ const INTRO_MESSAGE: VisibleMessage = {
   id: 'intro',
   role: 'assistant',
   content:
-    "Hello! I'm your conversational co-pilot for the fulfillment center. Ask me about throughput, quality, labor efficiency, upcoming maintenance, or anything else you'd expect on an ops war room dashboard—I'll surface the most relevant metrics, trends, and risks.",
+    "Hello! I'm RTR Insight, your conversational co-pilot for the Secaucus fulfillment center. Ask me about throughput, quality, labor efficiency, upcoming maintenance, or anything else you'd expect on an ops war room dashboard—I'll surface the most relevant metrics, trends, and risks.",
 }
 
 const SUGGESTED_PROMPTS = [
@@ -134,12 +134,12 @@ export default function AiInsightsPage() {
             </span>
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-rtr-ink">
-            Insight Assistant
+            RTR Insight Assistant
           </h1>
           <p className="w-full text-base text-rtr-slate">
-            Discover performance drivers across the operation with a conversational
+            Discover performance drivers across the Secaucus operation with a conversational
             interface. Ask about throughput, quality, labor utilization, SLA risk, or any metric you
-            would track on the factory floor. The assistant will synthesize data, call out trends, and
+            would track on the factory floor. RTR Insight will synthesize data, call out trends, and
             recommend next actions.
           </p>
         </header>
@@ -200,7 +200,7 @@ export default function AiInsightsPage() {
             <form onSubmit={handleSubmit} className="flex flex-shrink-0 flex-col gap-3">
               <div className="flex items-end gap-3">
                 <label className="sr-only" htmlFor="ai-question">
-                  Ask the Assistant
+                  Ask RTR Insight
                 </label>
                 <textarea
                   id="ai-question"
@@ -216,7 +216,7 @@ export default function AiInsightsPage() {
                   type="submit"
                   disabled={isSubmitting || !inputValue.trim()}
                   className="h-12 rounded-xl px-5 text-base"
-                  aria-label="Send question to the Assistant"
+                  aria-label="Send question to RTR Insight"
                 >
                   {isSubmitting ? (
                     <>

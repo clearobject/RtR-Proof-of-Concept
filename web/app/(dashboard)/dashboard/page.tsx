@@ -49,14 +49,14 @@ export default function DashboardPage() {
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <header className="mb-10">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-rtr-slate">
-            Operations Portal
+            RTR Operations
           </p>
           <h1 className="mt-3 text-3xl font-semibold text-rtr-ink sm:text-4xl">
             Executive Operational Dashboard
           </h1>
           <p className="mt-3 max-w-3xl text-base text-rtr-slate">
-            Real-time performance, capacity and alerting to help leadership
-            steer the facility with confidence.
+            Real-time performance, capacity and alerting to help RTR leadership
+            steer the EWR facility with confidence.
           </p>
         </header>
 
