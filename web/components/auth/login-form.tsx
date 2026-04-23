@@ -259,7 +259,7 @@ export default function LoginForm() {
           <div>
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               className="w-full"
               disabled={loading !== null}
               onClick={handleGoogleSignIn}
