@@ -19,6 +19,7 @@ export async function updateSession(request: NextRequest) {
   const isInviteRoute = pathname.startsWith('/invite')
   const isJoinRoute = pathname.startsWith('/join')
   const isApiRoute = pathname.startsWith('/api')
+  const isAuthRoute = pathname.startsWith('/auth')
 
   let response = NextResponse.next({
     request: {
@@ -65,7 +66,7 @@ export async function updateSession(request: NextRequest) {
 
     hasProfile = Boolean(profile)
 
-    if (!hasProfile && !isInviteRoute && !isJoinRoute && !isApiRoute && pathname !== '/login') {
+    if (!hasProfile && !isInviteRoute && !isJoinRoute && !isApiRoute && !isAuthRoute && pathname !== '/login') {
       await supabase.auth.signOut()
       const url = request.nextUrl.clone()
       url.pathname = '/login'
@@ -76,7 +77,7 @@ export async function updateSession(request: NextRequest) {
 
   // Protect routes - redirect to login if not authenticated
   // But allow invite routes and API routes
-  if (!user && !pathname.startsWith('/login') && !isInviteRoute && !isJoinRoute && !isApiRoute) {
+  if (!user && !pathname.startsWith('/login') && !isInviteRoute && !isJoinRoute && !isApiRoute && !isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
@@ -90,7 +91,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Allow unauthenticated access to root and login
-  if (!user && (pathname === '/' || pathname === '/login' || isJoinRoute)) {
+  if (!user && (pathname === '/' || pathname === '/login' || isJoinRoute || isAuthRoute)) {
     return response
   }
 

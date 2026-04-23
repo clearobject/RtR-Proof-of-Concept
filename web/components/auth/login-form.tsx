@@ -1,19 +1,28 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/browser'
+import { getAllowedEmailDomain } from '@/lib/auth/email-domain'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 export default function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState<'signin' | 'reset' | 'magic' | null>(null)
+  const [loading, setLoading] = useState<'signin' | 'reset' | 'magic' | 'google' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
+
+  useEffect(() => {
+    const message = searchParams.get('message')
+    if (message) {
+      setStatus(message)
+    }
+  }, [searchParams])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -143,6 +152,51 @@ export default function LoginForm() {
     }
   }
 
+  const handleGoogleSignIn = async () => {
+    setLoading('google')
+    setError(null)
+    setStatus(null)
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      setError('Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.')
+      setLoading(null)
+      return
+    }
+
+    try {
+      const supabase = createClient()
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/auth/callback?next=/dashboard`
+          : undefined
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            hd: getAllowedEmailDomain(),
+            prompt: 'select_account',
+          },
+        },
+      })
+
+      if (error) {
+        setError(error.message)
+        setLoading(null)
+      }
+    } catch (err: any) {
+      setError(
+        err.message ||
+          'Configuration error: Please check Supabase environment variables'
+      )
+      setLoading(null)
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-lg">
@@ -152,6 +206,9 @@ export default function LoginForm() {
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Sign in to your account
+          </p>
+          <p className="mt-1 text-center text-xs text-gray-500">
+            Google sign-in is limited to {getAllowedEmailDomain()} accounts.
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
@@ -197,6 +254,17 @@ export default function LoginForm() {
           <div>
             <Button type="submit" className="w-full" disabled={loading !== null}>
               {loading === 'signin' ? 'Signing in...' : 'Sign in'}
+            </Button>
+          </div>
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={loading !== null}
+              onClick={handleGoogleSignIn}
+            >
+              {loading === 'google' ? 'Redirecting to Google...' : 'Sign in with Google'}
             </Button>
           </div>
           <div className="space-y-2 text-sm">
